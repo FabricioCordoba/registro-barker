@@ -1,0 +1,39 @@
+.button_general {
+    background-color: var(--color-btn, #004a8d);
+    color: white !important;
+    padding: 1rem 2rem;
+    border-radius: 30px;
+    border: none;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    width: 100%;
+    max-width: 300px;
+    text-align: center;
+    display: block;
+    margin: 0.5rem 0;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.button_general:hover {
+    background-color: var(--color-btn-hover, #003366);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+}
+
+@media (max-width: 768px) {
+    .button_general {
+        font-size: 1rem;
+        padding: 0.8rem 1.5rem;
+        max-width: 250px;
+    }
+}
+
+@media (max-width: 480px) {
+    .button_general {
+        font-size: 0.9rem;
+        padding: 0.7rem 1.2rem;
+        max-width: 100%;
+    }
+}

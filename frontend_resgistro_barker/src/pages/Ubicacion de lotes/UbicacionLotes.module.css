@@ -1,0 +1,105 @@
+
+* {
+    box-sizing: border-box;
+}
+
+html, body {
+    overflow-x: hidden;
+}
+
+.container_Ulotes {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.header_Ulotes {
+    display: flex;
+    justify-content: center;
+    align-items: center;    
+    gap: 10px;
+    margin: 20px 0;
+}
+
+.header_Ulotes h2 {
+    text-align: center;
+    font-size: 28px;
+    color: #333;
+}
+
+.icon_Ulotes {
+    width: 28px;   
+    height: 28px;
+    color: var(--color-btn); 
+}
+
+
+.grid_Ulotes {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+}
+
+.mapCard h3 {
+    margin-bottom: 10px;
+}
+
+
+.mapWrapper {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.mapWrapper iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+.button_Ulotes {
+    display: flex;
+    justify-content: center;
+    margin: 20px auto;
+    background-color: var(--color-btn);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 18px;
+    transition: background-color 0.3s;
+}
+
+
+@media (min-width: 1200px) {
+    .grid_Ulotes {
+        grid-template-columns: 1fr 1fr 1fr; 
+    }
+}
+@media (max-width: 1200px) {
+    .grid_Ulotes {
+        grid-template-columns: 1fr 1fr; 
+    }
+}
+
+@media (max-width: 768px) {
+    .grid_Ulotes {
+        grid-template-columns: 1fr 1fr; 
+    }
+    .container_Ulotes {
+        padding: 15px;
+    }
+}
+
+@media (max-width: 480px) {
+    .container_Ulotes {
+        padding: 10px;
+    }
+     .grid_Ulotes {
+        grid-template-columns: 1fr ; 
+    }
+}

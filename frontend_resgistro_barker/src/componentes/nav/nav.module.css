@@ -1,0 +1,137 @@
+.container_general_nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 92px;
+    padding-left: 3rem;
+    padding-right: 3rem;
+    box-sizing: border-box;
+    background-color: #002b5a;
+    color: #ffffff;
+}
+
+
+.logo img {
+    height: 60px;
+    padding-left: 40px;
+}
+
+
+.container_h2_nav {
+    flex: 1;
+    text-align: center;
+}
+
+.container_h2_nav h2 {
+    font-size: 20px;
+    font-weight: bold;
+}
+
+.container_redes {
+    display: flex;
+    gap: 15px;
+    font-size: 20px;
+    padding-right: 40px;
+    padding-left: 40px;
+    border-left: rgba(224, 224, 224, 0.5) solid 1px;
+    border-right: rgba(224, 224, 224, 0.5) solid 1px;
+}
+
+
+.container_fecha {
+    font-size: 16px;
+    padding-left: 100px;
+    padding-right: 40px;
+}
+
+
+@media screen and (min-width: 1025px) {
+    .numero_texto {
+        display: none;
+
+    }
+}
+
+@media (max-width: 1024px) {
+    .container_general_nav {
+        height: 60px;
+        padding: 5px 10px;
+    }
+
+    .logo img {
+        height: 50px;
+    }
+
+    .container_h2_nav h2 {
+        font-size: 20px;
+    }
+
+    .container_redes {
+        display: none;
+    }
+
+    .container_fecha {
+        display: none;
+    }
+
+    .numero_texto {
+        font-size: 16px;
+        padding-left: 20px;
+        padding-right: 30px;
+    }
+
+}
+
+@media (max-width: 768px) {
+    .container_general_nav {
+        height: 80px;
+        padding: 5px 10px;
+    }
+
+    .logo img {
+        height: 45px;
+    }
+
+    .container_h2_nav h2 {
+        font-size: 18px;
+
+    }
+
+    .container_redes {
+        font-size: 18px;
+        gap: 10px;
+        padding: 0 20px;
+    }
+
+    .container_fecha {
+        font-size: 14px;
+        padding: 0 20px;
+    }
+}
+
+
+@media (max-width: 480px) {
+    .container_general_nav {
+        height: 80px;
+        padding: 5px;
+    }
+
+    .logo img {
+        height: 40px;
+        padding-left: 17px;
+    }
+
+    .container_h2_nav h2 {
+        font-size: 16px;
+    }
+
+    .container_redes {
+        font-size: 16px;
+        gap: 8px;
+        padding: 0 10px;
+    }
+
+    .container_fecha {
+        font-size: 12px;
+    }
+}

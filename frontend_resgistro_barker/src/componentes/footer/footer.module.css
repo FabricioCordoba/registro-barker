@@ -1,0 +1,354 @@
+.container_general_footer {
+    display: block;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    width: 100%;
+    padding-top: 35px;
+}
+
+.container_numeros_emergencias_footer {
+    background-color: #162230;
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    align-items: center;
+    height: 154.11px;
+}
+
+.container_numeros_emergencias {
+    display: flex;
+    width: 100%;
+    justify-content: space-evenly;
+}
+
+
+.container_numero {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    padding: 10px;
+    text-align: center;
+    max-width: 25%;
+}
+
+.numero {
+    margin: 1px 0;
+    font-size: 47px;
+    font-weight: 600;
+    line-height: 1.1em;
+}
+
+.numero_texto {
+    text-decoration: none;
+}
+
+.texto {
+    margin: 1px 0;
+    color: #E3E3E3;
+    font-weight: 600;
+    font-size: 14px;
+    text-transform: uppercase;
+}
+
+.icon_emergencias {
+    fill: #009AAE;
+    color: #009AAE;
+    border-color: #009AAE;
+    font-family: "Font Awesome 5 Free";
+    font-weight: 900;
+    font-size: 50px;
+    transform: rotate(25deg);
+    transition: transform 0.3s ease;
+}
+
+.numero_texto {
+    text-align: start;
+}
+
+.icon_redes_footer {
+    width: 37px;
+    height: 37px;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: row;
+    font-size: 14px;
+    margin-left: 20px;
+}
+
+.container_contacto {
+    background-color: #153456;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    flex-direction: row;
+    height: 159.16px;
+}
+
+.container_contacto_footer {
+    background-color: #153456;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    flex-direction: row;
+    height: 159.16px;
+}
+
+.logo_footer {
+    height: 90px;
+    margin-left: 53px;
+    margin-bottom: 5px;
+}
+
+.container_direccion,
+.container_numero_telefono {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    margin-right: 20px;
+}
+
+.icon_contacto {
+    color: #009AAE;
+    font-size: 44px;
+    font-weight: 900;
+}
+
+.texto_contacto {
+    font-size: 22px;
+    font-weight: 500;
+    padding-left: 10px;
+    padding-bottom: 10px;
+}
+
+.container_redes {
+    display: flex;
+    flex-direction: row;
+    font-size: 36px;
+    margin-right: 21px;
+}
+
+.top_footer {
+    background-color: #009AAE;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 62.41px;
+    font-size: 16px;
+}
+
+@media (max-width: 1045px) {
+    .container_contacto {
+        flex-direction: column;
+        height: auto;
+        padding: 15px 0;
+    }
+
+    .container_numeros_emergencias_footer {
+        height: 176px;
+    }
+
+    .numero {
+        font-size: 47px;
+    }
+
+    .texto {
+        font-size: 14px;
+    }
+
+    .icon_emergencias {
+        font-size: 54px;
+    }
+
+    .icon_redes_footer {
+        width: 40px;
+        height: 40px;
+        font-size: 18px;
+    }
+
+    .logo_footer {
+        height: 67px;
+        margin-bottom: 15px;
+        margin-right: 30px;
+    }
+
+    .texto_contacto {
+        font-size: 22px;
+    }
+
+    .icon_contacto {
+        font-size: 40px;
+    }
+
+    .container_contacto_footer {
+        height: 170px;
+    }
+
+    .top_footer {
+        font-size: 16px;
+    }
+}
+
+@media (max-width: 1025px) {
+    .container_contacto_footer {
+        height: 217.22px;
+        display: flex;
+        justify-content: flex-start;
+    }
+
+    .container_contacto {
+        display: none;
+    }
+
+    .container_redes {
+        display: none;
+    }
+
+    .logo_footer {
+        height: 147px;
+        margin-bottom: 10px;
+        margin-left: 128px;
+    }
+}
+
+/* Para pantallas menores a 768px */
+@media (max-width: 767px) {
+    .top_footer {
+        height: 62.41px;
+    }
+
+    .container_contacto_footer {
+        height: 237.88px;
+        display: flex;
+        justify-content: center;
+    }
+
+    .logo_footer {
+        margin: auto;
+        height: 197px;
+    }
+
+    .container_numeros_emergencias_footer {
+        height: 360px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        
+    }
+
+
+    .container_numeros_emergencias {
+        display: flex;
+        width: 100%;
+        justify-content: space-evenly;
+        align-items: flex-start;
+    }
+
+    .container_numero {
+        display: flex;
+        width: 45%;
+        margin-left: 90px;
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .icon_emergencias {
+        font-size: 53px;
+        margin-right: 10px;
+        margin-bottom: 10px;
+    }
+
+    .numero_texto {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .numero {
+        font-size: 47px;
+    }
+
+    .texto {
+        font-size: 16px;
+    }
+}
+
+@media (max-width: 645px) {
+    .top_footer p {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .container_numeros_emergencias {
+        margin-right: 50px;
+        margin-top: 10px;
+        margin-bottom: 10px;
+    }
+
+    .icon_emergencias {
+        font-size: 40px;
+        margin-right: 10px;
+        margin-bottom: 10px;
+    }
+}
+
+/* Para pantallas menores a 480px */
+@media (max-width: 480px) {
+    .container_numeros_emergencias_footer {
+        padding-right: 20px;
+        display: flex;  
+        justify-content: center;
+        height: auto;
+    }
+
+    .top_footer {
+        margin: auto;
+        text-align: center;
+        padding: 10px 0;
+    }
+    .icon_emergencias {
+        font-size: 30px;
+        margin-right: 10px;
+        margin-bottom: 10px;
+    }
+    .numero {
+        font-size: 30px;
+    }
+
+    .texto {
+        font-size: 14px;
+    }
+
+    .container_contacto_footer {
+        height: auto;
+        padding: 10px 0;
+    }
+    .logo_footer {
+        height: 150px;       
+    }
+
+}
+
+/* Para pantallas menores a 360px */
+@media (max-width: 360px) {
+    .container_numero {
+        display: flex;
+        width: 45%;
+        margin-left: 45px;
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+   .container_contacto_footer {
+        height: auto;
+        padding: 10px 0;
+    }
+    .logo_footer {
+        height: 150px;       
+    }
+}
