@@ -3,6 +3,8 @@ import { useState, useEffect, useContext } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import styles from "./vistaRegistro.module.css";
 import Swal from "sweetalert2";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import {
   fetchRegistroById,
   updateRegistro,
@@ -19,6 +21,7 @@ import {
 import { useTokenMonitor } from '../../hooks/useTokenMonitor';
 import { AuthContext } from "../../auth/AuthContext";
 import { formatearDNI } from "../../services/transformDataDto";
+import { clasificacionesDeudor } from "../../services/clasificacionDeudor";
 
 const VistaRegistro = () => {
   const { registroId } = useParams();
@@ -166,6 +169,322 @@ const VistaRegistro = () => {
   function toUpperCase(str) {
     return str ? String(str).toUpperCase() : "";
   }
+
+ const handleDescargarPDF = async () => {
+    if (!registro) return;
+
+    const doc = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const marginX = 14;
+    const colors = {
+      primary: "#2c3e50",
+      secondary: "#007bff",
+      accent: "#34495e",
+      text: "#4a4a4a",
+      lightBg: "#f8f9fa",
+    };
+
+    const numeroRegistro = registro?.personas?.[0]?.numero_registro ?? registroId ?? "-";
+    const hoy = new Date();
+    const fecha =
+      `${String(hoy.getDate()).padStart(2, "0")}/` +
+      `${String(hoy.getMonth() + 1).padStart(2, "0")}/` +
+      `${hoy.getFullYear()}`;
+
+    const getLogoData = () =>
+      new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          try {
+            const canvas = document.createElement("canvas");
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0);
+            resolve({
+              dataUrl: canvas.toDataURL("image/png"),
+              width: img.width,
+              height: img.height,
+            });
+          } catch (error) {
+            reject(error);
+          }
+        };
+        img.onerror = reject;
+        img.src = "/Logo_Muni2024.png";
+      });
+
+    // Encabezado
+    doc.setFillColor(colors.primary);
+    doc.rect(0, 0, pageWidth, 28, "F");
+    try {
+      const logo = await getLogoData();
+      // Logo dentro de una "pastilla" clara para mejor contraste
+      const containerX = marginX;
+      const containerY = 4;
+      const containerW = 20;
+      const containerH = 20;
+      const innerPadding = 1.5;
+      const maxW = containerW - innerPadding * 2;
+      const maxH = containerH - innerPadding * 2;
+      const ratio = Math.min(maxW / logo.width, maxH / logo.height);
+      const drawW = logo.width * ratio;
+      const drawH = logo.height * ratio;
+      const drawX = containerX + (containerW - drawW) / 2;
+      const drawY = containerY + (containerH - drawH) / 2;
+
+      doc.setFillColor(255, 255, 255);
+      doc.roundedRect(containerX, containerY, containerW, containerH, 2, 2, "F");
+      doc.addImage(logo.dataUrl, "PNG", drawX, drawY, drawW, drawH);
+    } catch (error) {
+      console.warn("No se pudo cargar el logo para el PDF:", error);
+    }
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.text("Comprobante de Registro", marginX + 24, 12);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(11);
+    doc.text('Programa "Mi hábitat, mi hogar"', marginX + 24, 20);
+    doc.setTextColor(colors.text);
+    doc.setDrawColor(colors.secondary);
+    doc.setLineWidth(0.8);
+    doc.line(marginX, 30, pageWidth - marginX, 30);
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.setTextColor(colors.accent);
+    doc.text(`Registro N° ${String(numeroRegistro)}`, marginX, 38);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(colors.text);
+    doc.text(`Fecha: ${fecha}`, pageWidth - marginX, 38, { align: "right" });
+
+    const personas = registro?.personas ?? [];
+
+    const drawSectionTitle = (y, title) => {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.setTextColor(colors.accent);
+      doc.text(title, marginX, y);
+      const titleW = doc.getTextWidth(title);
+      doc.setDrawColor(colors.secondary);
+      doc.setLineWidth(0.3);
+      doc.line(marginX, y + 0.8, marginX + titleW, y + 0.8);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(colors.text);
+      return y + 7;
+    };
+
+    let yTabla = drawSectionTitle(44, "Datos de las personas integrantes");
+
+    autoTable(doc, {
+      startY: yTabla,
+      head: [["Rol", "Nombre", "DNI", "CUIT", "Email", "Teléfono", "Lote", "Estado civil", "Vínculo con el titular","Vivienda"]],
+      body: personas.map((p) => [
+        p?.titular_cotitular ?? "-",
+        `${p?.nombre ?? ""} ${p?.apellido ?? ""}`.trim() || "-",
+        p?.dni ? formatearDNI(p.dni) : "-",
+        p?.CUIL_CUIT ? formatearCUIT(p.CUIL_CUIT) : "-",
+        p?.email ?? "-",
+        p?.telefono ?? "-",
+        p?.lote ? `Lote: ${p.lote.localidad || "-"}` : "-",
+        p?.estado_civil ?? "-",
+        p?.titular_cotitular === "Titular" ? "Titular" : (p?.vinculo ?? "-"),
+        p?.vivienda
+          ? `Vivienda: ${p.vivienda.direccion || "-"} N° ${p.vivienda.numero_direccion || "-"}${
+              p.vivienda.piso_departamento && Number(p.vivienda.piso_departamento) !== 0
+                ? ` Piso: ${p.vivienda.piso_departamento}`
+                : ""
+            }`
+          : "-",
+
+      ]),
+      styles: { fontSize: 8, cellPadding: 2, textColor: colors.text, lineColor: colors.lightBg, lineWidth: 0.2 },
+      headStyles: { fillColor: colors.primary, textColor: 255, fontStyle: "bold" },
+      alternateRowStyles: { fillColor: colors.lightBg },
+      theme: "striped",
+      margin: { left: marginX, right: marginX },
+    });
+
+    const parseSalario = (value) => {
+      if (value === null || value === undefined) return 0;
+      if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+      let text = String(value).trim();
+      if (!text) return 0;
+      text = text.replace(/[^\d,.-]/g, "");
+      const tienePunto = text.includes(".");
+      const tieneComa = text.includes(",");
+
+      if (tienePunto && tieneComa) {
+        text = text.replace(/\./g, "").replace(",", ".");
+      } else if (tieneComa) {
+        text = text.replace(",", ".");
+      } else if ((text.match(/\./g) || []).length > 1) {
+        text = text.replace(/\./g, "");
+      }
+
+      const n = Number.parseFloat(text);
+      return Number.isFinite(n) ? n : 0;
+    };
+
+    const textoDireccionVivienda = (v) => {
+      if (!v || typeof v !== "object") return "—";
+      const partes = [];
+      partes.push(`${v.direccion || "-"} N° ${v.numero_direccion || "-"}`);
+      if (v.piso_departamento && Number(v.piso_departamento) !== 0) {
+        partes.push(`Piso ${v.piso_departamento}`);
+      }
+      if (v.numero_departamento && String(v.numero_departamento).trim() !== "0") {
+        partes.push(`Dpto ${v.numero_departamento}`);
+      }
+      if (v.localidad) partes.push(v.localidad);
+      return partes.join(" · ");
+    };
+
+    const viviendasRows = personas.map((p) => {
+      const v = p?.vivienda;
+      const nombreCompleto = `${p?.nombre ?? ""} ${p?.apellido ?? ""}`.trim() || "—";
+      if (!v || typeof v !== "object") {
+        return [nombreCompleto, "—", "—", "—", "—", "—"];
+      }
+      return [
+        nombreCompleto,
+        textoDireccionVivienda(v),
+        v.cantidad_dormitorios != null && v.cantidad_dormitorios !== "" ? String(v.cantidad_dormitorios) : "—",
+        v.estado_vivienda ?? "—",
+        v.alquiler === true ? "Sí" : v.alquiler === false ? "No" : "—",
+        v.alquiler && v.valor_alquiler != null ? formatearPrecio(v.valor_alquiler) : "—",
+      ];
+    });
+
+    const ingresosRows = personas.flatMap((p) => {
+      const ingresos = Array.isArray(p?.ingresos) ? p.ingresos : [];
+      if (ingresos.length === 0) {
+        return [
+          [
+            `${p?.nombre ?? ""} ${p?.apellido ?? ""}`.trim() || "-",
+            p?.titular_cotitular ?? "-",
+            "—",
+            "—",
+            "—",
+          ],
+        ];
+      }
+      return ingresos.map((ing) => [
+        `${p?.nombre ?? ""} ${p?.apellido ?? ""}`.trim() || "-",
+        p?.titular_cotitular ?? "-",
+        ing?.situacion_laboral ?? "-",
+        ing?.ocupacion ?? "-",
+        formatearPrecio(parseSalario(ing?.salario)),
+      ]);
+    });
+
+    const totalIngresosRegistro = personas.reduce((accPersonas, persona) => {
+      const ingresosPersona = Array.isArray(persona?.ingresos) ? persona.ingresos : [];
+      const totalPersona = ingresosPersona.reduce(
+        (accIngresos, ingreso) => accIngresos + parseSalario(ingreso?.salario),
+        0
+      );
+      return accPersonas + totalPersona;
+    }, 0);
+
+    ingresosRows.push([
+      "TOTAL DEL REGISTRO",
+      "",
+      "",
+      "",
+      formatearPrecio(totalIngresosRegistro),
+    ]);
+
+    yTabla = (doc.lastAutoTable?.finalY ?? 20) + 10;
+    yTabla = drawSectionTitle(yTabla, "Ingresos y situación laboral");
+
+    autoTable(doc, {
+      startY: yTabla,
+      head: [["Persona", "Rol", "Situación laboral", "Ocupación", "Salario"]],
+      body: ingresosRows,
+      styles: { fontSize: 8, cellPadding: 2, textColor: colors.text, lineColor: colors.lightBg, lineWidth: 0.2 },
+      headStyles: { fillColor: colors.accent, textColor: 255, fontStyle: "bold" },
+      didParseCell: (data) => {
+        const isTotalRow = data.section === "body" && data.row.index === ingresosRows.length - 1;
+        if (isTotalRow) {
+          data.cell.styles.fillColor = [232, 240, 254];
+          data.cell.styles.fontStyle = "bold";
+          data.cell.styles.textColor = [44, 62, 80];
+        }
+      },
+      alternateRowStyles: { fillColor: colors.lightBg },
+      theme: "striped",
+      margin: { left: marginX, right: marginX },
+    });
+
+    yTabla = (doc.lastAutoTable?.finalY ?? 20) + 10;
+    yTabla = drawSectionTitle(yTabla, "Datos de vivienda");
+
+    autoTable(doc, {
+      startY: yTabla,
+      head: [["Nombre", "Vivienda", "Dormitorios", "Estado", "Alquiler", "Valor alquiler"]],
+      body: viviendasRows,
+      styles: { fontSize: 8, cellPadding: 2, textColor: colors.text, lineColor: colors.lightBg, lineWidth: 0.2 },
+      headStyles: { fillColor: colors.primary, textColor: 255, fontStyle: "bold" },
+      alternateRowStyles: { fillColor: colors.lightBg },
+      theme: "striped",
+      margin: { left: marginX, right: marginX },
+    });
+
+    const textoSituacionMorosidad = (situacion) => {
+      if (situacion == null || situacion === "") return "—";
+      const n = Number(situacion);
+      const c =
+        clasificacionesDeudor[n] ??
+        clasificacionesDeudor[situacion];
+      const desc = c?.descripcion ?? "Desconocido";
+      return `${Number.isFinite(n) ? n : situacion} - ${desc}`;
+    };
+
+    const morosidadRows = personas.flatMap((p) => {
+      const items = morosidadData?.[p?.idPersona] ?? [];
+      const arr = Array.isArray(items) ? items : [];
+      if (!p?.idPersona || arr.length === 0) {
+        return [
+          [
+            `${p?.nombre ?? ""} ${p?.apellido ?? ""}`.trim() || "-",
+            p?.CUIL_CUIT ? formatearCUIT(p.CUIL_CUIT) : "-",
+            "—",
+            "—",
+            "—",
+            "—",
+          ],
+        ];
+      }
+      return arr.map((info) => [
+        `${p?.nombre ?? ""} ${p?.apellido ?? ""}`.trim() || "-",
+        p?.CUIL_CUIT ? formatearCUIT(p.CUIL_CUIT) : "-",
+        info?.periodo ? formatPeriodo(info.periodo) : "-",
+        info?.entidad ?? "-",
+        textoSituacionMorosidad(info?.situacion),
+        info?.procesoJud ? "Sí" : "No",
+      ]);
+    });
+
+    yTabla = (doc.lastAutoTable?.finalY ?? 20) + 10;
+    yTabla = drawSectionTitle(yTabla, "Morosidad (BCRA)");
+
+    autoTable(doc, {
+      startY: yTabla,
+      head: [["Persona", "CUIT", "Último período", "Entidad", "Situación", "Proc. Jud."]],
+      body: morosidadRows,
+      styles: { fontSize: 8, cellPadding: 2, textColor: colors.text, lineColor: colors.lightBg, lineWidth: 0.2 },
+      headStyles: { fillColor: colors.secondary, textColor: 255, fontStyle: "bold" },
+      alternateRowStyles: { fillColor: colors.lightBg },
+      theme: "striped",
+      margin: { left: marginX, right: marginX },
+    });
+
+    const safeFile = String(numeroRegistro).replace(/[^\w.-]+/g, "_");
+    doc.save(`registro-${safeFile}.pdf`);
+  };
+
   if (loading) return <div className={styles.loading}>Cargando...</div>;
   if (!registro) return null;
 
@@ -206,6 +525,13 @@ const VistaRegistro = () => {
               className={styles.editButton}
             >
               Editar Registro
+            </button>
+             <button
+              onClick={handleDescargarPDF}
+              className={styles.editButton}
+              type="button"
+            >
+              Descargar PDF
             </button>
             <button
               onClick={() => volverDashboard()}
