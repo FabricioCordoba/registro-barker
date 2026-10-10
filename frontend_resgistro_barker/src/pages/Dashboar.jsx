@@ -350,7 +350,7 @@ const filas = datosOrdenados.map(({ persona, lote, vivienda }) => {
               .map((registro, idxRegistro) => {
                   const sumaTotalIngresos = registro.personas
     .reduce((total, persona) => {
-      if (persona.titular_cotitular === "Titular" || persona.titular_cotitular === "Cotitular") {
+      if (persona.titular_cotitular === "Titular" || persona.titular_cotitular === "Cotitular" || persona.titular_cotitular === "Conviviente") {
         const ingresosPersona = persona.ingresos || [];
         return (
           total +
