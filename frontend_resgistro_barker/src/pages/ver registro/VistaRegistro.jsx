@@ -172,7 +172,7 @@ const VistaRegistro = () => {
 
   const sumaTotalIngresos = registro.personas
     .reduce((total, persona) => {
-      if (persona.titular_cotitular === "Titular" || persona.titular_cotitular === "Cotitular") {
+      if (persona.titular_cotitular === "Titular" || persona.titular_cotitular === "Cotitular" || persona.titular_cotitular === "Conviviente") {
         const ingresosPersona = persona.ingresos || [];
         return (
           total +
@@ -300,7 +300,7 @@ const VistaRegistro = () => {
 
                 return agrupadas.map(({ vivienda, personas }, index) => {
                   const totalIngresosVivienda = personas.reduce((total, persona) => {
-                    if (persona.titular_cotitular === "Titular" || persona.titular_cotitular === "Cotitular") {
+                    if (persona.titular_cotitular === "Titular" || persona.titular_cotitular === "Cotitular" || persona.titular_cotitular === "Conviviente") {
                       const ingresosPersona = persona.ingresos || [];
                       return (
                         total +
