@@ -1,15 +1,83 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import styles from "./formulario.module.css";
 import Swal from 'sweetalert2';
 import { callesPorLocalidad } from '../../services/listado_calles/listadoCalles';
 import { useNavigate } from 'react-router-dom';
-import { transformarDatosEnvioBackend, esMenorDeEdad } from '../../services/transformDataDto';
+import { transformarDatosEnvioBackend, esMenorDeEdad, formatearDNI } from '../../services/transformDataDto';
 import ReCAPTCHA from "react-google-recaptcha";
+import { AsYouType } from 'libphonenumber-js';
 
 const API_URL = import.meta.env.VITE_API_REGISTRO;
+const DOMINIOS_EMAIL_COMUNES = [
+  'gmail.com',
+  'hotmail.com',
+  'hotmail.com.ar',
+  'outlook.com',
+  'outlook.com.ar',
+  'live.com',
+  'live.com.ar',
+  'yahoo.com',
+  'yahoo.com.ar',
+  'icloud.com',
+  'arnet.com.ar',
+  'fibertel.com.ar',
+  'speedy.com.ar',
+  'ciudad.com.ar',
+];
+
+const obtenerErrorEmail = (email, permitirIncompleto = true) => {
+  if (!email) return '';
+  if (/\s/.test(email) || (email.match(/@/g) || []).length > 1) {
+    return 'El formato del correo no es válido.';
+  }
+
+  const [usuario, dominio = ''] = email.split('@');
+  if (!email.includes('@')) {
+    return permitirIncompleto ? '' : 'El correo debe incluir @.';
+  }
+  if (!usuario || !dominio) {
+    return permitirIncompleto ? '' : 'Complete el usuario y el dominio del correo.';
+  }
+  if (!/^[^@.](?:[^@]*[^@.])?$/.test(usuario) || usuario.includes('..')) {
+    return 'El formato del correo no es válido.';
+  }
+
+  const dominioCoincide = DOMINIOS_EMAIL_COMUNES.some((dominioValido) =>
+    dominioValido.startsWith(dominio.toLowerCase())
+  );
+  if (permitirIncompleto && dominioCoincide) return '';
+  if (!DOMINIOS_EMAIL_COMUNES.includes(dominio.toLowerCase())) {
+    return 'El dominio no es válido. Use uno de los proveedores de correo más comunes en Argentina.';
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return 'El formato del correo no es válido.';
+  }
+
+  return '';
+};
+
+const formatearCUILCUIT = (valor) => {
+  const digitos = String(valor).replace(/\D/g, '').slice(0, 11);
+  const prefijo = digitos.slice(0, 2);
+  const cuerpo = digitos.slice(2, 10);
+  const digitoVerificador = digitos.slice(10, 11);
+
+  return [
+    prefijo,
+    cuerpo && `${prefijo ? '-' : ''}${cuerpo}`,
+    digitoVerificador && `-${digitoVerificador}`,
+  ].filter(Boolean).join('');
+};
+
+const formatearMonto = (valor) => {
+  const digitos = String(valor).replace(/\D/g, '');
+  if (!digitos) return '';
+
+  return `$ ${Number(digitos).toLocaleString('es-AR', { maximumFractionDigits: 0 })}`;
+};
 
 
-const Formulario = () => {
+const Formulario = ({ onSubmit }) => {
   useEffect(() => {
     window.scrollTo({
       top: 0,
@@ -248,12 +316,12 @@ const Formulario = () => {
     for (const persona of personas) {
       if (!esMenorDeEdad(persona.persona.fecha_nacimiento)) {
         for (const ingreso of persona.ingresos) {
-          // Validar que el ingreso no sea negativo
-          if (ingreso.salario < 0) {
+          const montoIngreso = Number(ingreso.salario);
+          if (ingreso.situacion_laboral !== "Desempleado" && montoIngreso < 100000) {
             Swal.fire({
               icon: 'error',
               title: 'Error en ingresos',
-              text: 'El monto del ingreso no puede ser negativo',
+              text: 'El ingreso mensual mínimo es de $ 100.000',
             });
             return;
           }
@@ -323,18 +391,18 @@ const Formulario = () => {
         }
 
         // Validar email
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(persona.persona.email)) {
+        const errorEmail = obtenerErrorEmail(persona.persona.email, false);
+        if (errorEmail) {
           Swal.fire({
             icon: 'error',
             title: 'Email inválido',
-            text: 'Por favor ingrese un email válido',
+            text: errorEmail,
           });
           return;
         }
 
         // Validar DNI (7 a 8 dígitos)
-        if (!/^\d{7,8}$/.test(persona.persona.dni)) {
+        if (!/^\d{7,8}$/.test(String(persona.persona.dni).replace(/\./g, ''))) {
           Swal.fire({
             icon: 'error',
             title: 'DNI inválido',
@@ -354,11 +422,11 @@ const Formulario = () => {
         }
 
         // Validar teléfono (mínimo 10 dígitos)
-        if (!/^\d{10,}$/.test(persona.persona.telefono)) {
+        if (!/^\d{10}$/.test(String(persona.persona.telefono).replace(/\D/g, ''))) {
           Swal.fire({
             icon: 'error',
             title: 'Teléfono inválido',
-            text: 'El teléfono debe tener al menos 10 dígitos',
+            text: 'El teléfono debe tener 10 dígitos, sin 0 ni 15',
           });
           return;
         }
@@ -464,27 +532,10 @@ function validarViviendaYLote(persona, callesPorLocalidad) {
       });
 
       const responseData = await response.json();
+      console.log("📥 Respuesta del backend:", responseData);
+
       if (!response.ok) {
         let errorMessage = responseData.message || "Error desconocido";
-
-        if (Array.isArray(errorMessage)) {
-          errorMessage = errorMessage.join(" ");
-        }
-
-        if (typeof errorMessage === "string" && errorMessage.includes("Las inscripciones han finalizado")) {
-          await Swal.fire({
-            icon: 'info',
-            title: 'Inscripciones finalizadas',
-            text: errorMessage,
-          });
-
-          navigate('/');
-
-          recaptchaRef.current?.reset();
-          setRecaptchaToken(""); // Limpia el token en el estado
-
-          return;
-        }
 
         if (responseData.code === "DNI_DUPLICADO") {
           errorMessage = "El DNI ingresado ya está registrado en la base de datos.";
@@ -508,11 +559,9 @@ function validarViviendaYLote(persona, callesPorLocalidad) {
 
       // Si el registro fue exitoso
       await Swal.fire({
-        icon: responseData.emailEnviado === false ? 'warning' : 'success',
-        title: responseData.emailEnviado === false ? 'Registro guardado' : 'Registro exitoso',
-        text: responseData.emailEnviado === false
-          ? 'El registro se guardó correctamente, pero no se pudo enviar el comprobante por correo.'
-          : 'Los datos se han registrado correctamente.',
+        icon: 'success',
+        title: 'Registro Exitoso',
+        text: 'Los datos se han registrado correctamente.',
       }).then(() => {
         navigate('/registro-exitoso');
       });
@@ -529,6 +578,8 @@ function validarViviendaYLote(persona, callesPorLocalidad) {
       }, 200);
 
     } catch (error) {
+
+      console.error('Error en el frontend:', error);
 
       Swal.fire({
         icon: 'error',
@@ -709,9 +760,12 @@ function validarViviendaYLote(persona, callesPorLocalidad) {
                   type="text"
                   placeholder="DNI (sin puntos ni comas)"
                   value={personaData.persona.dni}
-                  onChange={(e) => handleInputChange(index, 'persona.dni', e.target.value)}
+                  onChange={(e) => {
+                    const dni = e.target.value.replace(/\D/g, '').slice(0, 8);
+                    handleInputChange(index, 'persona.dni', formatearDNI(dni));
+                  }}
                   className={styles.input}
-                  maxLength="8"
+                  maxLength="10"
                 />
               </label>
 
@@ -722,11 +776,14 @@ function validarViviendaYLote(persona, callesPorLocalidad) {
                     <input
                       required
                       type="text"
-                      placeholder="CUIL/CUIT (sin guiones ni espacios)"
-                      value={personaData.persona.CUIL_CUIT}
-                      onChange={(e) => handleInputChange(index, 'persona.CUIL_CUIT', e.target.value)}
+                      placeholder="CUIL/CUIT"
+                      value={formatearCUILCUIT(personaData.persona.CUIL_CUIT)}
+                      onChange={(e) => {
+                        const cuilCuit = e.target.value.replace(/\D/g, '').slice(0, 11);
+                        handleInputChange(index, 'persona.CUIL_CUIT', cuilCuit);
+                      }}
                       className={styles.input}
-                      maxLength="11"
+                      maxLength="13"
                     />
                   </label>
 
@@ -739,7 +796,14 @@ function validarViviendaYLote(persona, callesPorLocalidad) {
                       value={personaData.persona.email}
                       onChange={(e) => handleInputChange(index, 'persona.email', e.target.value)}
                       className={styles.input}
+                      aria-invalid={Boolean(obtenerErrorEmail(personaData.persona.email))}
+                      aria-describedby={`email-error-${index}`}
                     />
+                    {obtenerErrorEmail(personaData.persona.email) && (
+                      <span id={`email-error-${index}`} className={styles.inputError} role="alert">
+                        {obtenerErrorEmail(personaData.persona.email)}
+                      </span>
+                    )}
                   </label>
 
                   <label className={styles.label}>
@@ -749,8 +813,12 @@ function validarViviendaYLote(persona, callesPorLocalidad) {
                       type="text"
                       placeholder="Teléfono sin 0 y sin 15"
                       value={personaData.persona.telefono}
-                      onChange={(e) => handleInputChange(index, 'persona.telefono', e.target.value)}
+                      onChange={(e) => {
+                        const digitos = e.target.value.replace(/\D/g, '').slice(0, 10);
+                        handleInputChange(index, 'persona.telefono', new AsYouType('AR').input(digitos));
+                      }}
                       className={styles.input}
+                      maxLength="13"
                     />
                   </label>
 
@@ -1091,10 +1159,14 @@ function validarViviendaYLote(persona, callesPorLocalidad) {
                     <span className={styles.labelText}>Monto del alquiler *</span>
                     <input
                       required={index === 0 || showHousingData[index]}
-                      type="number"
-                      placeholder="Monto del alquiler (sin puntos ni comas)"
-                      value={personaData.vivienda.valor_alquiler}
-                      onChange={(e) => handleInputChange(index, 'vivienda.valor_alquiler', e.target.value)}
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="$ 100.000"
+                      value={formatearMonto(personaData.vivienda.valor_alquiler)}
+                      onChange={(e) => {
+                        const monto = e.target.value.replace(/\D/g, '');
+                        handleInputChange(index, 'vivienda.valor_alquiler', monto);
+                      }}
                       className={styles.input}
                     />
                   </label>
@@ -1168,12 +1240,15 @@ function validarViviendaYLote(persona, callesPorLocalidad) {
                         <span className={styles.labelText}>CUIT del empleador *</span>
                         <input
                           type="text"
-                          placeholder="CUIT del empleador (sin guiones ni espacios)"
-                          value={ingreso.CUIT_empleador || ""}
-                          onChange={(e) => handleInputChange(index, `ingresos.${ingresoIndex}.CUIT_empleador`, e.target.value)}
+                          placeholder="CUIT del empleador"
+                          value={formatearCUILCUIT(ingreso.CUIT_empleador || "")}
+                          onChange={(e) => {
+                            const cuit = e.target.value.replace(/\D/g, '').slice(0, 11);
+                            handleInputChange(index, `ingresos.${ingresoIndex}.CUIT_empleador`, cuit);
+                          }}
                           className={styles.input}
                           required
-                          maxLength="11"
+                          maxLength="13"
                         />
                       </label>
                     )}
@@ -1181,10 +1256,14 @@ function validarViviendaYLote(persona, callesPorLocalidad) {
                     <label className={styles.label}>
                       <span className={styles.labelText}>Ingreso mensual</span>
                       <input
-                        type="number"
-                        placeholder="Ingreso mensual (sin puntos ni comas)"
-                        value={ingreso.salario}
-                        onChange={(e) => handleInputChange(index, `ingresos.${ingresoIndex}.salario`, e.target.value)}
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="$ 000.000"
+                        value={formatearMonto(ingreso.salario)}
+                        onChange={(e) => {
+                          const monto = e.target.value.replace(/\D/g, '');
+                          handleInputChange(index, `ingresos.${ingresoIndex}.salario`, monto);
+                        }}
                         className={styles.input}
                         required={ingreso.situacion_laboral !== "Desempleado"}
                       />
@@ -1232,11 +1311,11 @@ function validarViviendaYLote(persona, callesPorLocalidad) {
                       className={styles.select}
                     >
                       <option value="" disabled>Seleccione localidad</option>
-                      <option value="Benito Juárez">Benito Juárez</option>
+                      {/* <option value="Benito Juárez">Benito Juárez</option> */}
                       <option value="Barker">Barker</option>
-                      <option value="Estación López">Estación López</option>
+                      {/* <option value="Estación López">Estación López</option>
                       <option value="El Luchador">El Luchador</option>
-                      <option value="Tedín Uriburu">Tedín Uriburu</option>
+                      <option value="Tedín Uriburu">Tedín Uriburu</option> */}
                     </select>
                   </label>
                 </div>
