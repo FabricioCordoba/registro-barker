@@ -1,5 +1,5 @@
 import { CreateViviendaDto } from 'src/vivienda/dto/create-vivienda.dto';
-import { Controller, Get, Post, Body, Patch, Param, Delete, HttpStatus, HttpException, BadRequestException, Put, Query, ParseIntPipe, UseGuards, Headers } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, HttpStatus, HttpException, BadRequestException, BadGatewayException, Put, Query, ParseIntPipe, UseGuards, Headers } from '@nestjs/common';
 import { RegistroService } from './registro.service';
 import { UpdateRegistroDto } from './dto/update-registro.dto';
 import { CreateLoteDto } from 'src/lote/dto/create-lote.dto';
@@ -17,6 +17,14 @@ import { RecaptchaService } from 'src/reCaptcha/reCaptchaService';
 
 @Controller('registro')
 export class RegistroController {
+  private readonly bcraCache = new Map<
+    string,
+    { datos: unknown; expiraEn: number }
+  >();
+  private readonly bcraSolicitudesEnCurso = new Map<string, Promise<unknown>>();
+  private bcraCola: Promise<void> = Promise.resolve();
+  private ultimaSolicitudBcra = 0;
+
   constructor(
     private readonly registroService: RegistroService,
     private readonly recaptchaService: RecaptchaService
@@ -88,6 +96,119 @@ export class RegistroController {
   }
 
   @UseGuards(AuthGuard('jwt'))
+  @Get('bcra/:cuilCuit')
+  async consultarDeudorBcra(@Param('cuilCuit') cuilCuit: string) {
+    const identificacion = String(cuilCuit ?? '').replace(/\D/g, '');
+    if (!/^\d{11}$/.test(identificacion)) {
+      throw new BadRequestException('El CUIL/CUIT debe tener 11 dígitos.');
+    }
+
+    const cache = this.bcraCache.get(identificacion);
+    if (cache && cache.expiraEn > Date.now()) {
+      return cache.datos;
+    }
+
+    const solicitudExistente = this.bcraSolicitudesEnCurso.get(identificacion);
+    if (solicitudExistente) {
+      return solicitudExistente;
+    }
+
+    const solicitud = this.consultarBcraConReintentos(identificacion)
+      .then((datos) => {
+        this.bcraCache.set(identificacion, {
+          datos,
+          expiraEn: Date.now() + 5 * 60 * 1000,
+        });
+        return datos;
+      })
+      .finally(() => {
+        this.bcraSolicitudesEnCurso.delete(identificacion);
+      });
+
+    this.bcraSolicitudesEnCurso.set(identificacion, solicitud);
+    return solicitud;
+  }
+
+  private async consultarBcraConReintentos(identificacion: string) {
+    const ejecutarConsulta = async () => {
+      let respuesta: Response | undefined;
+
+      for (let intento = 0; intento < 4; intento++) {
+        const esperaEntreSolicitudes = Math.max(
+          0,
+          1000 - (Date.now() - this.ultimaSolicitudBcra),
+        );
+        if (esperaEntreSolicitudes > 0) {
+          await new Promise((resolve) =>
+            setTimeout(resolve, esperaEntreSolicitudes),
+          );
+        }
+        this.ultimaSolicitudBcra = Date.now();
+
+        try {
+          respuesta = await fetch(
+            `https://api.bcra.gob.ar/CentralDeDeudores/v1.0/Deudas/${identificacion}`,
+            {
+              headers: {
+                Accept: 'application/json',
+                'User-Agent': 'registro-barker/1.0',
+              },
+              signal: AbortSignal.timeout(15000),
+            },
+          );
+        } catch (error) {
+          if (intento === 3) {
+            throw new BadGatewayException(
+              'No se pudo conectar con el servicio del BCRA después de varios intentos.',
+            );
+          }
+
+          await new Promise((resolve) =>
+            setTimeout(resolve, 1000 * (intento + 1)),
+          );
+          continue;
+        }
+
+        if (respuesta.status !== 429 || intento === 3) {
+          break;
+        }
+
+        const retryAfter = Number(respuesta.headers.get('Retry-After'));
+        const esperaPorLimite = Number.isFinite(retryAfter) && retryAfter > 0
+          ? retryAfter * 1000
+          : 2000 * (intento + 1);
+        await new Promise((resolve) => setTimeout(resolve, esperaPorLimite));
+      }
+
+      if (!respuesta?.ok) {
+        const estado = respuesta
+          ? `${respuesta.status} ${respuesta.statusText}`
+          : 'sin respuesta';
+        throw new BadGatewayException(
+          `El servicio del BCRA respondió con error (${estado}).`,
+        );
+      }
+
+      const datos = await respuesta.json();
+      if (!Array.isArray(datos?.results?.periodos)) {
+        throw new BadGatewayException(
+          'El BCRA devolvió una respuesta sin períodos de deuda.',
+        );
+      }
+
+      return datos;
+    };
+
+    const solicitud = this.bcraCola.then(ejecutarConsulta, ejecutarConsulta);
+    this.bcraCola = solicitud.then(
+      () => undefined,
+      () => undefined,
+    );
+
+    return solicitud;
+  }
+
+  @UseGuards(AuthGuard('jwt'))
   @Get(':id')
   async findOne(@Param('id') id: number) {
 
@@ -118,7 +239,7 @@ export class RegistroController {
         {
           status: HttpStatus.BAD_REQUEST,
           error: 'Error en la actualización',
-          message: error.message
+          message: error.mesage
         },
         HttpStatus.BAD_REQUEST
       );

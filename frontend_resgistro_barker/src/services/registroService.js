@@ -231,20 +231,76 @@ export const updateVivienda = async (id, data) => {
   }
 };
 
+const cacheBcra = new Map();
+const consultasBcraEnCurso = new Map();
+const CACHE_BCRA_TTL_MS = 5 * 60 * 1000;
+
 export const getRegistroDeudorBcra = async (cuilCuit) => {
+  const identificacion = String(cuilCuit ?? "").replace(/\D/g, "");
+  let consultaIniciada;
+
   try {
-    const res = await fetch(`https://api.bcra.gob.ar/CentralDeDeudores/v1.0/Deudas/${cuilCuit}`);
+    if (!/^\d{11}$/.test(identificacion)) {
+      throw new Error("El CUIL/CUIT debe tener 11 dígitos para consultar el BCRA.");
+    }
 
-    /* if (!res.ok) {
-      throw new Error(`Error ${res.status}: ${res.statusText}`);
-    } */
+    const cache = cacheBcra.get(identificacion);
+    if (cache && cache.expiraEn > Date.now()) {
+      return cache.datos;
+    }
 
-    return await res.json();
+    const consultaEnCurso = consultasBcraEnCurso.get(identificacion);
+    if (consultaEnCurso) {
+      return await consultaEnCurso;
+    }
+
+    const consulta = (async () => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        throw new Error("No hay token disponible para consultar la morosidad.");
+      }
+
+      const res = await fetch(`${API_BASE}/registro/bcra/${identificacion}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (!res.ok) {
+        const errorData = await res.json();
+        const message = Array.isArray(errorData.message)
+          ? errorData.message.join(", ")
+          : errorData.message;
+        throw new Error(
+          message || `Error al consultar la morosidad: ${res.status} ${res.statusText}`
+        );
+      }
+
+      const data = await res.json();
+      if (!Array.isArray(data?.results?.periodos)) {
+        throw new Error("El BCRA devolvió una respuesta sin períodos de deuda.");
+      }
+
+      cacheBcra.set(identificacion, {
+        datos: data,
+        expiraEn: Date.now() + CACHE_BCRA_TTL_MS,
+      });
+
+      return data;
+    })();
+
+    consultaIniciada = consulta;
+    consultasBcraEnCurso.set(identificacion, consulta);
+    return await consulta;
   } catch (error) {
     // Un solo log para cualquier error
     console.error('Error al obtener el registro de deudor en BCRA:', error.message);
     throw error;
+  } finally {
+    if (
+      consultaIniciada &&
+      consultasBcraEnCurso.get(identificacion) === consultaIniciada
+    ) {
+      consultasBcraEnCurso.delete(identificacion);
+    }
   }
 };
-
-
