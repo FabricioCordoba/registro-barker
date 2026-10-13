@@ -514,7 +514,11 @@ const Dashboard = () => {
           );
 
           const salarios = ingresos.map((ingreso) =>
-            formatearPrecio(aNumero(ingreso.salario))
+            ingreso.salario === "" ||
+              ingreso.salario === null ||
+              ingreso.salario === undefined
+              ? null
+              : aNumero(ingreso.salario)
           );
 
           const idReg = registroId ?? persona.idRegistro;
@@ -576,20 +580,20 @@ const Dashboard = () => {
 
           const morosidadResumen = itemsMorosidad.length
             ? itemsMorosidad.map((item) => {
-                const periodo = item.periodo
-                  ? formatPeriodo(item.periodo)
-                  : "Período sin informar";
-                const entidad = item.entidad || "Entidad sin informar";
-                const deuda =
-                  item.deuda === "" ||
+              const periodo = item.periodo
+                ? formatPeriodo(item.periodo)
+                : "Período sin informar";
+              const entidad = item.entidad || "Entidad sin informar";
+              const deuda =
+                item.deuda === "" ||
                   item.deuda === null ||
                   item.deuda === undefined
-                    ? "Monto sin informar"
-                    : formatearPrecio(aNumero(item.deuda));
-                const situacion = obtenerSituacion(item.situacion);
+                  ? "Monto sin informar"
+                  : formatearPrecio(aNumero(item.deuda));
+              const situacion = obtenerSituacion(item.situacion);
 
-                return `${periodo} | ${entidad} | ${deuda} | ${situacion}`;
-              }).join("\n")
+              return `${periodo} | ${entidad} | ${deuda} | ${situacion}`;
+            }).join("\n")
             : "Sin datos de morosidad";
 
           return [
@@ -631,11 +635,11 @@ const Dashboard = () => {
               (_, i) => salarios[i] || "----"
             ),
 
-            formatearPrecio(totalIngresosPersona),
+            totalIngresosPersona,
 
             persona.titular_cotitular === "Titular"
-              ? formatearPrecio(totalPorFamilia[idReg] ?? 0)
-              : "----",
+              ? (totalPorFamilia[idReg] ?? 0)
+              : null,
 
             lote?.localidad ?? "-----------",
             persona.titular_cotitular ?? "----",
@@ -650,10 +654,11 @@ const Dashboard = () => {
               : vivienda?.alquiler === false
                 ? "No"
                 : "No informado",
-
-            vivienda?.valor_alquiler
-              ? formatearPrecio(aNumero(vivienda.valor_alquiler))
-              : "----",
+            vivienda?.valor_alquiler !== null &&
+              vivienda?.valor_alquiler !== undefined &&
+              vivienda?.valor_alquiler !== ""
+              ? aNumero(vivienda.valor_alquiler)
+              : null,
 
             vivienda?.tipo_alquiler ?? "----",
             vivienda?.estado_vivienda ?? "----",
@@ -695,6 +700,37 @@ const Dashboard = () => {
         encabezados,
         ...filas,
       ]);
+
+      
+const columnasMonetarias = [
+  ...Array.from(
+    { length: maxIngresos },
+    (_, i) => encabezados.indexOf(`Ingreso ${i + 1}`)
+  ),
+  encabezados.indexOf("Total Ingresos por Persona"),
+  encabezados.indexOf("Ingresos Totales por Registro"),
+  encabezados.indexOf("Valor Alquiler"),
+  ...Array.from(
+    { length: maxMorosidades },
+    (_, i) => encabezados.indexOf(`Monto deuda BCRA ${i + 1}`)
+  ),
+].filter((indice) => indice >= 0);
+
+for (let fila = 1; fila <= filas.length; fila++) {
+  for (const columna of columnasMonetarias) {
+    const referencia = XLSX.utils.encode_cell({
+      r: fila,
+      c: columna,
+    });
+
+    const celda = hoja[referencia];
+
+    if (celda && typeof celda.v === "number") {
+      celda.t = "n";
+      celda.z = '"$" #,##0.00';
+    }
+  }
+}
 
       // Ajustar el ancho de las columnas.
       hoja["!cols"] = encabezados.map((encabezado, indice) => {
@@ -993,11 +1029,10 @@ const Dashboard = () => {
                 return personasRegistro.map((persona, idxPersona) => (
                   <tr
                     key={`${registro.idRegistro}-${persona.idPersona}`}
-                    className={`${rowClass} ${
-                      registro.idRegistro === registroHover
-                        ? styles.registroHover
-                        : ""
-                    }`}
+                    className={`${rowClass} ${registro.idRegistro === registroHover
+                      ? styles.registroHover
+                      : ""
+                      }`}
                     onMouseEnter={() =>
                       setRegistroHover(registro.idRegistro)
                     }
@@ -1014,7 +1049,7 @@ const Dashboard = () => {
 
                     <td>
                       {persona.ingresos &&
-                      persona.ingresos.length > 0 ? (
+                        persona.ingresos.length > 0 ? (
                         <ul
                           style={{
                             listStyle: "none",
