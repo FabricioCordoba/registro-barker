@@ -8,6 +8,8 @@ import Swal from "sweetalert2";
 import { jwtDecode } from "jwt-decode";
 import { formatearPrecio, formatearDNI, formatPeriodo } from "../services/transformDataDto";
 import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import { useTokenMonitor } from "../hooks/useTokenMonitor";
 import dayjs from "dayjs";
 import { getRegistroDeudorBcra } from "../services/registroService";
@@ -859,6 +861,415 @@ for (let fila = 1; fila <= filas.length; fila++) {
     descargarExcel(personasExtendidas, "personas_filtradas");
   };
 
+  const descargarTodosLosRegistrosPDF = async () => {
+    const registrosConPersonas = (registros || [])
+      .filter((registro) => registro.personas?.length)
+      .sort((a, b) => getNumeroRegistro(a) - getNumeroRegistro(b));
+    if (registrosConPersonas.length === 0) {
+      Swal.fire({
+        icon: "info",
+        title: "Sin registros",
+        text: "No hay registros para exportar.",
+      });
+      return;
+    }
+
+    Swal.fire({
+      title: "Preparando PDF",
+      text: "Consultando la información de morosidad. Esto puede tardar unos momentos.",
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      didOpen: () => Swal.showLoading(),
+    });
+
+    try {
+      const personasExtendidasPDF = registrosConPersonas.flatMap((registro) =>
+        registro.personas.map((persona) => ({ persona }))
+      );
+      const morosidadPorPersona = await consultarMorosidadBcra(personasExtendidasPDF);
+      const doc = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const marginX = 14;
+      const colors = {
+        primary: "#2c3e50",
+        secondary: "#007bff",
+        accent: "#34495e",
+        text: "#4a4a4a",
+        lightBg: "#f8f9fa",
+      };
+      const hoy = new Date();
+      const fecha = `${String(hoy.getDate()).padStart(2, "0")}/${String(
+        hoy.getMonth() + 1
+      ).padStart(2, "0")}/${hoy.getFullYear()}`;
+
+      let logo;
+      try {
+        logo = await new Promise((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => {
+            try {
+              const canvas = document.createElement("canvas");
+              canvas.width = img.width;
+              canvas.height = img.height;
+              const context = canvas.getContext("2d");
+              context.drawImage(img, 0, 0);
+              resolve({
+                dataUrl: canvas.toDataURL("image/png"),
+                width: img.width,
+                height: img.height,
+              });
+            } catch (error) {
+              reject(error);
+            }
+          };
+          img.onerror = reject;
+          img.src = "/Logo_Muni2024.png";
+        });
+      } catch (error) {
+        console.warn("No se pudo cargar el logo para el PDF:", error);
+      }
+
+      const dibujarEncabezado = (numeroRegistro) => {
+        doc.setFillColor(colors.primary);
+        doc.rect(0, 0, pageWidth, 28, "F");
+
+        if (logo) {
+          const containerX = marginX;
+          const containerY = 4;
+          const containerW = 20;
+          const containerH = 20;
+          const innerPadding = 1.5;
+          const ratio = Math.min(
+            (containerW - innerPadding * 2) / logo.width,
+            (containerH - innerPadding * 2) / logo.height
+          );
+          const drawW = logo.width * ratio;
+          const drawH = logo.height * ratio;
+          doc.setFillColor(255, 255, 255);
+          doc.roundedRect(containerX, containerY, containerW, containerH, 2, 2, "F");
+          doc.addImage(
+            logo.dataUrl,
+            "PNG",
+            containerX + (containerW - drawW) / 2,
+            containerY + (containerH - drawH) / 2,
+            drawW,
+            drawH
+          );
+        }
+
+        doc.setTextColor(255, 255, 255);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(16);
+        doc.text("Comprobante de Registro", marginX + 24, 12);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(11);
+        doc.text('Programa "Mi hábitat, mi hogar"', marginX + 24, 20);
+        doc.setDrawColor(colors.secondary);
+        doc.setLineWidth(0.8);
+        doc.line(marginX, 30, pageWidth - marginX, 30);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
+        doc.setTextColor(colors.accent);
+        doc.text(`Registro N° ${String(numeroRegistro)}`, marginX, 38);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(colors.text);
+        doc.text(`Fecha: ${fecha}`, pageWidth - marginX, 38, { align: "right" });
+      };
+
+      const drawSectionTitle = (y, title, numeroRegistro) => {
+        if (y > pageHeight - 65) {
+          doc.addPage();
+          dibujarEncabezado(numeroRegistro);
+          y = 44;
+        }
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
+        doc.setTextColor(colors.accent);
+        doc.text(title, marginX, y);
+        const titleW = doc.getTextWidth(title);
+        doc.setDrawColor(colors.secondary);
+        doc.setLineWidth(0.3);
+        doc.line(marginX, y + 0.8, marginX + titleW, y + 0.8);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(colors.text);
+        return y + 7;
+      };
+
+      const opcionesTabla = (headColor, numeroRegistro) => ({
+        styles: {
+          fontSize: 8,
+          cellPadding: 2,
+          textColor: colors.text,
+          lineColor: colors.lightBg,
+          lineWidth: 0.2,
+        },
+        headStyles: { fillColor: headColor, textColor: 255, fontStyle: "bold" },
+        alternateRowStyles: { fillColor: colors.lightBg },
+        theme: "striped",
+        margin: { top: 44, left: marginX, right: marginX },
+        didDrawPage: () => dibujarEncabezado(numeroRegistro),
+      });
+
+      const parseSalario = (valor) => {
+        if (valor === null || valor === undefined) return 0;
+        if (typeof valor === "number") return Number.isFinite(valor) ? valor : 0;
+        let texto = String(valor).trim().replace(/[^\d,.-]/g, "");
+        if (texto.includes(".") && texto.includes(",")) {
+          texto = texto.replace(/\./g, "").replace(",", ".");
+        } else if (texto.includes(",")) {
+          texto = texto.replace(",", ".");
+        } else if ((texto.match(/\./g) || []).length > 1) {
+          texto = texto.replace(/\./g, "");
+        }
+        const numero = Number.parseFloat(texto);
+        return Number.isFinite(numero) ? numero : 0;
+      };
+
+      const formatearCUIT = (cuit) => {
+        const digitos = String(cuit ?? "").replace(/\D/g, "");
+        return digitos.length === 11
+          ? `${digitos.slice(0, 2)}-${digitos.slice(2, 10)}-${digitos.slice(10)}`
+          : cuit || "-";
+      };
+
+      const textoDireccionVivienda = (vivienda) => {
+        if (!vivienda || typeof vivienda !== "object") return "—";
+        const partes = [
+          `${vivienda.direccion || "-"} N° ${vivienda.numero_direccion || "-"}`,
+        ];
+        if (vivienda.piso_departamento && Number(vivienda.piso_departamento) !== 0) {
+          partes.push(`Piso ${vivienda.piso_departamento}`);
+        }
+        if (
+          vivienda.numero_departamento &&
+          String(vivienda.numero_departamento).trim() !== "0"
+        ) {
+          partes.push(`Dpto ${vivienda.numero_departamento}`);
+        }
+        if (vivienda.localidad) partes.push(vivienda.localidad);
+        return partes.join(" · ");
+      };
+
+      const textoSituacionMorosidad = (situacion) => {
+        if (situacion == null || situacion === "") return "—";
+        const numero = Number(situacion);
+        const clasificacion =
+          clasificacionesDeudor[numero] ?? clasificacionesDeudor[situacion];
+        const descripcion = clasificacion?.descripcion ?? "Desconocido";
+        return `${Number.isFinite(numero) ? numero : situacion} - ${descripcion}`;
+      };
+
+      registrosConPersonas.forEach((registro, indiceRegistro) => {
+        const personas = registro.personas || [];
+        const numeroRegistro =
+          personas[0]?.numero_registro ?? registro.idRegistro ?? "-";
+        if (indiceRegistro > 0) doc.addPage();
+        dibujarEncabezado(numeroRegistro);
+
+        let yTabla = drawSectionTitle(
+          44,
+          "Datos de las personas integrantes",
+          numeroRegistro
+        );
+        autoTable(doc, {
+          startY: yTabla,
+          head: [[
+            "Rol", "Nombre", "DNI", "CUIT", "Email", "Teléfono",
+            "Lote", "Estado civil", "Vínculo con el titular", "Vivienda",
+          ]],
+          body: personas.map((persona) => [
+            persona?.titular_cotitular ?? "-",
+            `${persona?.nombre ?? ""} ${persona?.apellido ?? ""}`.trim() || "-",
+            persona?.dni ? formatearDNI(persona.dni) : "-",
+            persona?.CUIL_CUIT ? formatearCUIT(persona.CUIL_CUIT) : "-",
+            persona?.email ?? "-",
+            persona?.telefono ?? "-",
+            persona?.lote ? `Lote: ${persona.lote.localidad || "-"}` : "-",
+            persona?.estado_civil ?? "-",
+            persona?.titular_cotitular === "Titular"
+              ? "Titular"
+              : persona?.vinculo ?? "-",
+            persona?.vivienda
+              ? `Vivienda: ${persona.vivienda.direccion || "-"} N° ${
+                  persona.vivienda.numero_direccion || "-"
+                }${
+                  persona.vivienda.piso_departamento &&
+                  Number(persona.vivienda.piso_departamento) !== 0
+                    ? ` Piso: ${persona.vivienda.piso_departamento}`
+                    : ""
+                }`
+              : "-",
+          ]),
+          ...opcionesTabla(colors.primary, numeroRegistro),
+        });
+
+        const viviendasRows = personas.map((persona) => {
+          const vivienda = persona?.vivienda;
+          const nombreCompleto =
+            `${persona?.nombre ?? ""} ${persona?.apellido ?? ""}`.trim() || "—";
+          if (!vivienda || typeof vivienda !== "object") {
+            return [nombreCompleto, "—", "—", "—", "—", "—"];
+          }
+          return [
+            nombreCompleto,
+            textoDireccionVivienda(vivienda),
+            vivienda.cantidad_dormitorios != null &&
+            vivienda.cantidad_dormitorios !== ""
+              ? String(vivienda.cantidad_dormitorios)
+              : "—",
+            vivienda.estado_vivienda ?? "—",
+            vivienda.alquiler === true
+              ? "Sí"
+              : vivienda.alquiler === false
+                ? "No"
+                : "—",
+            vivienda.alquiler && vivienda.valor_alquiler != null
+              ? formatearPrecio(vivienda.valor_alquiler)
+              : "—",
+          ];
+        });
+
+        const ingresosRows = personas.flatMap((persona) => {
+          const ingresos = Array.isArray(persona?.ingresos)
+            ? persona.ingresos
+            : [];
+          if (ingresos.length === 0) {
+            return [[
+              `${persona?.nombre ?? ""} ${persona?.apellido ?? ""}`.trim() || "-",
+              persona?.titular_cotitular ?? "-",
+              "—",
+              "—",
+              "—",
+            ]];
+          }
+          return ingresos.map((ingreso) => [
+            `${persona?.nombre ?? ""} ${persona?.apellido ?? ""}`.trim() || "-",
+            persona?.titular_cotitular ?? "-",
+            ingreso?.situacion_laboral ?? "-",
+            ingreso?.ocupacion ?? "-",
+            formatearPrecio(parseSalario(ingreso?.salario)),
+          ]);
+        });
+        const totalIngresos = personas.reduce(
+          (total, persona) =>
+            total +
+            (persona?.ingresos || []).reduce(
+              (totalPersona, ingreso) =>
+                totalPersona + parseSalario(ingreso?.salario),
+              0
+            ),
+          0
+        );
+        ingresosRows.push([
+          "TOTAL DEL REGISTRO", "", "", "", formatearPrecio(totalIngresos),
+        ]);
+
+        yTabla = doc.lastAutoTable.finalY + 10;
+        yTabla = drawSectionTitle(
+          yTabla,
+          "Ingresos y situación laboral",
+          numeroRegistro
+        );
+        autoTable(doc, {
+          startY: yTabla,
+          head: [["Persona", "Rol", "Situación laboral", "Ocupación", "Salario"]],
+          body: ingresosRows,
+          ...opcionesTabla(colors.accent, numeroRegistro),
+          didParseCell: (data) => {
+            if (
+              data.section === "body" &&
+              data.row.index === ingresosRows.length - 1
+            ) {
+              data.cell.styles.fillColor = [232, 240, 254];
+              data.cell.styles.fontStyle = "bold";
+              data.cell.styles.textColor = [44, 62, 80];
+            }
+          },
+        });
+
+        yTabla = doc.lastAutoTable.finalY + 10;
+        yTabla = drawSectionTitle(yTabla, "Datos de vivienda", numeroRegistro);
+        autoTable(doc, {
+          startY: yTabla,
+          head: [[
+            "Nombre", "Vivienda", "Dormitorios", "Estado", "Alquiler",
+            "Valor alquiler",
+          ]],
+          body: viviendasRows,
+          ...opcionesTabla(colors.primary, numeroRegistro),
+        });
+
+        const morosidadRows = personas.flatMap((persona) => {
+          const items =
+            morosidadPorPersona.get(claveMorosidadPersona(persona))?.items || [];
+          const nombreCompleto =
+            `${persona?.nombre ?? ""} ${persona?.apellido ?? ""}`.trim() || "-";
+          if (items.length === 0) {
+            return [[
+              nombreCompleto,
+              persona?.CUIL_CUIT ? formatearCUIT(persona.CUIL_CUIT) : "-",
+              "—",
+              "—",
+              "—",
+              "—",
+            ]];
+          }
+          return items.map((item) => [
+            nombreCompleto,
+            persona?.CUIL_CUIT ? formatearCUIT(persona.CUIL_CUIT) : "-",
+            item?.periodo ? formatPeriodo(item.periodo) : "-",
+            item?.entidad ?? "-",
+            textoSituacionMorosidad(item?.situacion),
+            item?.procesoJud ? "Sí" : "No",
+          ]);
+        });
+
+        yTabla = doc.lastAutoTable.finalY + 10;
+        yTabla = drawSectionTitle(yTabla, "Morosidad (BCRA)", numeroRegistro);
+        autoTable(doc, {
+          startY: yTabla,
+          head: [[
+            "Persona", "CUIT", "Último período", "Entidad", "Situación",
+            "Proc. Jud.",
+          ]],
+          body: morosidadRows,
+          ...opcionesTabla(colors.secondary, numeroRegistro),
+        });
+      });
+
+      doc.save("todos-los-registros.pdf");
+
+      const erroresConsulta = Array.from(morosidadPorPersona.values()).filter(
+        (info) => info.estado === "Error de consulta"
+      ).length;
+      Swal.close();
+      if (erroresConsulta > 0) {
+        Swal.fire({
+          icon: "warning",
+          title: "PDF generado con observaciones",
+          text: `El archivo se descargó, pero no se pudo consultar la morosidad de ${erroresConsulta} CUIT/CUIL.`,
+        });
+      } else {
+        Swal.fire({
+          icon: "success",
+          title: "PDF generado",
+          text: "Se descargó el PDF con todos los registros.",
+          timer: 2200,
+          showConfirmButton: false,
+        });
+      }
+    } catch (error) {
+      console.error("Error al generar el PDF de registros:", error);
+      Swal.close();
+      Swal.fire({
+        icon: "error",
+        title: "Error al generar el PDF",
+        text: "No se pudo crear el archivo. Revisá la consola para más detalles.",
+      });
+    }
+  };
+
   if (loading) {
     return <div className={styles.loading}>Cargando...</div>;
   }
@@ -887,6 +1298,13 @@ for (let fila = 1; fila <= filas.length; fila++) {
       <h1 className={styles.title}>Personas Registradas</h1>
 
       <div className={styles.downloadButtons}>
+        <button
+          onClick={descargarTodosLosRegistrosPDF}
+          className={styles.downloadButton}
+        >
+          Descargar Todos los registros (PDF)
+        </button>
+
         <button
           onClick={descargarTodosLosRegistros}
           className={styles.downloadButton}
