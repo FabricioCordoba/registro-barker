@@ -2,27 +2,34 @@ import { useState } from "react"
 import styles from "./home.module.css"
 import { Link } from "react-router-dom"
 import { ArrowRight, CheckCircle, Info, Users, FileText, Leaf, MapPin } from "lucide-react"
+import { ESTADOS_INSCRIPCION, getEstadoInscripcion } from "../../constants/registroFechas"
 
 function Home() {
   const [showDeadlineModal, setShowDeadlineModal] = useState(true)
 
-  const ahora = new Date()
-  const fechaCorte = new Date(2026, 11, 28, 23, 59, 0)
-  const inscripcionCerrada = ahora.getTime() > fechaCorte.getTime()
+  const estado = getEstadoInscripcion()
+  const inscripcionAbierta = estado === ESTADOS_INSCRIPCION.ABIERTA
+  const inscripcionCerrada = estado === ESTADOS_INSCRIPCION.CERRADA
+
+  const modalContent = {
+    antes: {
+      title: "Recordatorio de inscripción",
+      text: "El registro abre el 1 de noviembre de 2026. ¡Preparate para inscribirte!",
+    },
+    cerrada: {
+      title: "Inscripción finalizada",
+      text: "La inscripción al registro finalizó el 30 de noviembre de 2026 a las 23:59 hs. Ya no se permiten nuevos registros.",
+    },
+  }
+  const modal = modalContent[estado] || modalContent.antes
 
   return (
     <div className={styles.page_wrapper}>
-      {showDeadlineModal && (
+      {showDeadlineModal && !inscripcionAbierta && (
         <div className={styles.modal_overlay}>
           <div className={styles.modal_content}>
-            <h3 className={styles.modal_title}>
-              {inscripcionCerrada ? "Inscripción finalizada" : "Recordatorio de inscripción"}
-            </h3>
-            <p className={styles.modal_text}>
-              {inscripcionCerrada
-                ? "La inscripción al registro finalizó el 28 de febrero de 2026 a las 23:59 hs. Ya no se permiten nuevos registros."
-                : "Recordá que tenés hasta el 28 de febrero para inscribirte en el registro."}
-            </p>
+            <h3 className={styles.modal_title}>{modal.title}</h3>
+            <p className={styles.modal_text}>{modal.text}</p>
             <button
               type="button"
               className={styles.modal_button}
@@ -80,7 +87,7 @@ function Home() {
               </p>
             </div>
 
-           
+
           </div>
 
           <div className={styles.imagen_container}>
@@ -193,13 +200,22 @@ function Home() {
               <span>Inscripción cerrada</span>
               <Info className={styles.button_icon} />
             </button>
-          ) : (
+          ) : inscripcionAbierta ? (
             <Link to={"/registro"} className={styles.button_link}>
               <div className={styles.modern_button_primary}>
                 <span>Ingreso al Registro Lotes</span>
                 <ArrowRight className={styles.button_icon} />
               </div>
             </Link>
+          ) : (
+            <button
+              type="button"
+              className={`${styles.modern_button_primary} ${styles.button_disabled}`}
+              disabled
+            >
+              <span>Próximamente</span>
+              <Info className={styles.button_icon} />
+            </button>
           )}
         </div>
       </div>

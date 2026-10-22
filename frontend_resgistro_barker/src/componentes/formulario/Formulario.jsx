@@ -6,6 +6,12 @@ import { useNavigate } from 'react-router-dom';
 import { transformarDatosEnvioBackend, esMenorDeEdad, formatearDNI } from '../../services/transformDataDto';
 import ReCAPTCHA from "react-google-recaptcha";
 import { AsYouType } from 'libphonenumber-js';
+import {
+  INGRESO_FAMILIAR_MINIMO,
+  INGRESO_FAMILIAR_MAXIMO,
+  formatearMontoSMVM,
+  totalIngresoFamiliar,
+} from '../../constants/smvm';
 
 const API_URL = import.meta.env.VITE_API_REGISTRO;
 const DOMINIOS_EMAIL_COMUNES = [
@@ -23,6 +29,7 @@ const DOMINIOS_EMAIL_COMUNES = [
   'fibertel.com.ar',
   'speedy.com.ar',
   'ciudad.com.ar',
+  'benitojuarez.gov.ar',
 ];
 
 const obtenerErrorEmail = (email, permitirIncompleto = true) => {
@@ -349,6 +356,38 @@ const Formulario = ({ onSubmit }) => {
       }
     }
 
+
+
+    // Validar el ingreso familiar total (debe estar entre 3 y 10 SMVM)
+    const personasMayores = personas.filter(
+      (persona) => !esMenorDeEdad(persona.persona.fecha_nacimiento)
+    );
+    const totalIngresos = totalIngresoFamiliar(personasMayores);
+
+    if (totalIngresos < INGRESO_FAMILIAR_MINIMO || totalIngresos > INGRESO_FAMILIAR_MAXIMO) {
+      const esInsuficiente = totalIngresos < INGRESO_FAMILIAR_MINIMO;
+      const rango = `${formatearMontoSMVM(INGRESO_FAMILIAR_MINIMO)} y ${formatearMontoSMVM(INGRESO_FAMILIAR_MAXIMO)}`;
+
+      await Swal.fire({
+        icon: 'error',
+        title: esInsuficiente
+          ? 'Ingreso familiar insuficiente'
+          : 'Ingreso familiar excedido',
+        html:
+          `<p>El ingreso total informado es de <strong>${formatearMontoSMVM(totalIngresos)}</strong>.</p>` +
+          `<p>El ingreso familiar debe estar entre <strong>${rango}</strong> (3 a 10 salarios mínimos, vitales y móviles netos).</p>` +
+          (esInsuficiente
+            ? '<p>Sumá los ingresos de todos los integrantes del grupo familiar antes de enviar.</p>'
+            : '<p>Por superar el máximo, no estás en condiciones de participar.</p>') +
+          '<p>Por favor, revisá los ingresos cargados.</p>',
+        confirmButtonText: 'Revisar mis ingresos',
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+      });
+      return;
+    }
+
+
     // Agregar validación de edad para el titular
     if (esMenorDeEdad(personas[0].persona.fecha_nacimiento)) {
       Swal.fire({
@@ -433,94 +472,94 @@ const Formulario = ({ onSubmit }) => {
       }
 
       for (const persona of personas) {
-  // Validar vivienda y lote
-  if (!validarViviendaYLote(persona, callesPorLocalidad)) {
-    return; // si falla, corta la ejecución del handleSubmit
-  }
+        // Validar vivienda y lote
+        if (!validarViviendaYLote(persona, callesPorLocalidad)) {
+          return; // si falla, corta la ejecución del handleSubmit
+        }
 
-  // Validar que un valor numérico no sea negativo
-function validarNegativo(valor, titulo, mensaje) {
-  const numero = Number(valor);
-  if (!isNaN(numero) && numero < 0) {
-    Swal.fire({
-      icon: 'error',
-      title: titulo,
-      text: mensaje,
-    });
-    return false;
-  }
-  return true;
-}
+        // Validar que un valor numérico no sea negativo
+        function validarNegativo(valor, titulo, mensaje) {
+          const numero = Number(valor);
+          if (!isNaN(numero) && numero < 0) {
+            Swal.fire({
+              icon: 'error',
+              title: titulo,
+              text: mensaje,
+            });
+            return false;
+          }
+          return true;
+        }
 
-// Validar datos de vivienda y lote
-function validarViviendaYLote(persona, callesPorLocalidad) {
-  // Dormitorios
-  if (!validarNegativo(persona.vivienda.cantidad_dormitorios,
-      'Error en cantidad de dormitorios',
-      'La cantidad de dormitorios no puede ser un valor negativo')) return false;
+        // Validar datos de vivienda y lote
+        function validarViviendaYLote(persona, callesPorLocalidad) {
+          // Dormitorios
+          if (!validarNegativo(persona.vivienda.cantidad_dormitorios,
+            'Error en cantidad de dormitorios',
+            'La cantidad de dormitorios no puede ser un valor negativo')) return false;
 
-  // Número de dirección
-  if (!validarNegativo(persona.vivienda.numero_direccion,
-      'Error en número de dirección',
-      'El número de la dirección no puede ser un valor negativo')) return false;
+          // Número de dirección
+          if (!validarNegativo(persona.vivienda.numero_direccion,
+            'Error en número de dirección',
+            'El número de la dirección no puede ser un valor negativo')) return false;
 
-  // Piso de departamento
-  if (!validarNegativo(persona.vivienda.piso_departamento,
-      'Error en piso de departamento',
-      'El piso del departamento no puede ser un valor negativo')) return false;
+          // Piso de departamento
+          if (!validarNegativo(persona.vivienda.piso_departamento,
+            'Error en piso de departamento',
+            'El piso del departamento no puede ser un valor negativo')) return false;
 
-  // Número de departamento
-  if (!validarNegativo(persona.vivienda.numero_departamento,
-      'Error en número de departamento',
-      'El número del departamento no puede ser un valor negativo')) return false;
+          // Número de departamento
+          if (!validarNegativo(persona.vivienda.numero_departamento,
+            'Error en número de departamento',
+            'El número del departamento no puede ser un valor negativo')) return false;
 
-  // Alquiler
-  if (persona.vivienda.alquiler &&
-      !validarNegativo(persona.vivienda.valor_alquiler,
-      'Error en valor del alquiler',
-      'El monto del alquiler no puede ser un valor negativo')) return false;
+          // Alquiler
+          if (persona.vivienda.alquiler &&
+            !validarNegativo(persona.vivienda.valor_alquiler,
+              'Error en valor del alquiler',
+              'El monto del alquiler no puede ser un valor negativo')) return false;
 
-  // Validar datos requeridos de vivienda
-  if (
-    !persona.vivienda.direccion ||
-    (callesPorLocalidad[persona.vivienda.localidad]?.length > 0 && !persona.vivienda.numero_direccion) ||
-    persona.vivienda.departamento === null ||
-    !persona.vivienda.localidad ||
-    !persona.vivienda.cantidad_dormitorios ||
-    !persona.vivienda.estado_vivienda ||
-    persona.vivienda.alquiler === null ||
-    (persona.vivienda.alquiler && (!persona.vivienda.valor_alquiler || !persona.vivienda.tipo_alquiler))
-  ) {
-    Swal.fire({
-      icon: 'error',
-      title: 'Campos incompletos',
-      text: 'Por favor complete todos los datos de la vivienda',
-    });
-    return false;
-  }
+          // Validar datos requeridos de vivienda
+          if (
+            !persona.vivienda.direccion ||
+            (callesPorLocalidad[persona.vivienda.localidad]?.length > 0 && !persona.vivienda.numero_direccion) ||
+            persona.vivienda.departamento === null ||
+            !persona.vivienda.localidad ||
+            !persona.vivienda.cantidad_dormitorios ||
+            !persona.vivienda.estado_vivienda ||
+            persona.vivienda.alquiler === null ||
+            (persona.vivienda.alquiler && (!persona.vivienda.valor_alquiler || !persona.vivienda.tipo_alquiler))
+          ) {
+            Swal.fire({
+              icon: 'error',
+              title: 'Campos incompletos',
+              text: 'Por favor complete todos los datos de la vivienda',
+            });
+            return false;
+          }
 
-  // Validar lote si es titular
-  if (!persona.lote.localidad && persona.persona.titular_cotitular === "Titular") {
-    Swal.fire({
-      icon: 'error',
-      title: 'Campos incompletos',
-      text: 'Por favor seleccione la localidad del lote',
-    });
-    return false;
-  }
+          // Validar lote si es titular
+          if (!persona.lote.localidad && persona.persona.titular_cotitular === "Titular") {
+            Swal.fire({
+              icon: 'error',
+              title: 'Campos incompletos',
+              text: 'Por favor seleccione la localidad del lote',
+            });
+            return false;
+          }
 
-  return true;
-}
+          return true;
+        }
 
       }
-  
+
     }
 
     setLoading(true);
 
     try {
       const datosTransformados = personas.map(persona => transformarDatosEnvioBackend(persona));
-   
+
 
       const response = await fetch(API_URL, {
         method: "POST",
@@ -1194,7 +1233,7 @@ function validarViviendaYLote(persona, callesPorLocalidad) {
 
           {/* Sección de Ingresos */}
           {
-            !esMenorDeEdad(personaData.persona.fecha_nacimiento) &&(
+            !esMenorDeEdad(personaData.persona.fecha_nacimiento) && (
               <div className={`${styles.section} ${styles.incomeData}`}>
                 <h3 className={styles.sectionTitle}>Ingresos</h3>
                 {personaData.ingresos.map((ingreso, ingresoIndex) => (
