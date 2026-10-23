@@ -44,9 +44,9 @@ function Home() {
         <div className={styles.hero_section}>
           <div className={styles.h2_home}>
 
-            <h2>Registro de demanda socio habitacional</h2>
+            <h2>Registro de demanda socio habitacional </h2>
 
-            <p className={styles.hero_subtitle}>Construyendo el futuro de nuestra comunidad</p>
+            <p className={styles.hero_subtitle}>Construyendo el futuro de nuestra comunidad <br /> 2 Edicion - Barker 2026</p>
           </div>
         </div>
 
@@ -91,7 +91,7 @@ function Home() {
           </div>
 
           <div className={styles.imagen_container}>
-            <img src="/lotes.jpeg" alt="imagen lotes" className={styles.responsive_image} />
+            <img src="/lotes-barker.png" alt="imagen lotes" className={styles.responsive_image} />
              <div className={styles.feature_cards}>
               <div className={styles.feature_card}>
                 <Users className={styles.feature_icon} />
@@ -122,23 +122,31 @@ function Home() {
             <ul className={styles.requisitos_list}>
               <li>
                 <span className={styles.check_icon}>✓</span>
-                Número de documento y CUIL/CUIT del solicitante y grupo familiar
+                Número de documento y CUIL/CUIT del solicitante y grupo familiar.
               </li>
               <li>
                 <span className={styles.check_icon}>✓</span>
-                CUIT empleador
+                CUIT empleador.
               </li>
               <li>
                 <span className={styles.check_icon}>✓</span>
-                Poseer una cuenta de correo electrónico
+                Poseer una cuenta de correo electrónico.
               </li>
               <li>
                 <span className={styles.check_icon}>✓</span>
-                No poseer vivienda propia
+                No poseer vivienda propia.
               </li>
               <li>
                 <span className={styles.check_icon}>✓</span>
-                Mayor de 18 años
+                Mayor de 18 años.
+              </li>
+              <li>
+                <span className={styles.check_icon}>✓</span>
+                Tener un ingereso familiar mensual entre 3 y 10 veces el Salario Mínimo, Vital y Móvil (SMVM) vigente.
+              </li>
+              <li>
+                <span className={styles.check_icon}>✓</span>
+                Minimo 5 años de residencia en el partido de Benito Juárez.
               </li>
             </ul>
           </div>
