@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import  { useEffect } from 'react';
+import { useEffect } from 'react';
 import styles from "./UbicacionLotes.module.css";
 import { MapPin } from "lucide-react";
 
@@ -29,7 +29,7 @@ function UbicacionLotes() {
                 <h2>Ubicación de Lotes</h2>
             </div>
 
-            <div className={styles.grid_Ulotes}>
+            {/* <div className={styles.grid_Ulotes}>
                 {lotes.map((lote, index) => (
                     <div key={index} className={styles.mapCard}>
                         <h3>{lote.nombre}</h3>
@@ -42,6 +42,20 @@ function UbicacionLotes() {
                         </div>
                     </div>
                 ))}
+            </div> */}
+
+            <div className={styles.grid_Ulotes}>
+                <img src="/lote.jpeg" alt="imagen lotes" className={styles.responsive_image} width="100%" height="209px" />
+                <img src="/lote1.png" alt="imagen lotes" className={styles.responsive_image} width="100%" height="209px" />
+                <img src="/lote2.png" alt="imagen lotes" className={styles.responsive_image} width="100%" height="209px" />
+                <img src="/lote3.png" alt="imagen lotes" className={styles.responsive_image} width="100%" height="209px" />
+                <img src="/lote4.png" alt="imagen lotes" className={styles.responsive_image} width="100%" height="209px" />
+                <img src="/lote5.png" alt="imagen lotes" className={styles.responsive_image} width="100%" height="209px" />
+                <img src="/lote6.png" alt="imagen lotes" className={styles.responsive_image} width="100%" height="209px" />
+                <img src="/lote7.png" alt="imagen lotes" className={styles.responsive_image} width="100%" height="209px" />
+                <img src="/lote8.jpg" alt="imagen lotes" className={styles.responsive_image} width="100%" height="209px" />
+
+
             </div>
 
             <button className={styles.button_Ulotes} onClick={() => navigate('/')}>
