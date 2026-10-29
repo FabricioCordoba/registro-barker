@@ -13,7 +13,7 @@ import { IngresoService } from 'src/ingreso/ingreso.service';
 import { MailserviceModule } from 'src/mailservice/mailservice.module';
 import { Registro } from './entities/registro.entity';
 import { ReCaptchaModule } from 'src/reCaptcha/reCaptcha.module';
-import { RecaptchaService } from 'src/recaptcha/recaptchaService';
+import { RecaptchaService } from 'src/reCaptcha/recaptchaService';
 
 @Module({
   imports:[
