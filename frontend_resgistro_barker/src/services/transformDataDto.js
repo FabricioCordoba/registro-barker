@@ -37,7 +37,7 @@ export function transformarPersona(data) {
         nombre: String(data.nombre), // Asegurarse de que sea una cadena
         apellido: String(data.apellido),
         tipo_dni: String(data.tipo_dni),
-        dni: Number(data.dni), // Si lo necesitas como número, conviértelo
+        dni: Number(String(data.dni).replace(/\D/g, "")),
         CUIL_CUIT: Number(data.CUIL_CUIT),
         genero: String(data.genero),
         fecha_nacimiento: String(data.fecha_nacimiento), // Si es una fecha, conviértela correctamente

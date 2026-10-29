@@ -2,27 +2,34 @@ import { useState } from "react"
 import styles from "./home.module.css"
 import { Link } from "react-router-dom"
 import { ArrowRight, CheckCircle, Info, Users, FileText, Leaf, MapPin } from "lucide-react"
+import { ESTADOS_INSCRIPCION, getEstadoInscripcion } from "../../constants/registroFechas"
 
 function Home() {
   const [showDeadlineModal, setShowDeadlineModal] = useState(true)
 
-  const ahora = new Date()
-  const fechaCorte = new Date(2026, 11, 28, 23, 59, 0)
-  const inscripcionCerrada = ahora.getTime() > fechaCorte.getTime()
+  const estado = getEstadoInscripcion()
+  const inscripcionAbierta = estado === ESTADOS_INSCRIPCION.ABIERTA
+  const inscripcionCerrada = estado === ESTADOS_INSCRIPCION.CERRADA
+
+  const modalContent = {
+    antes: {
+      title: "Recordatorio de inscripción",
+      text: "El registro abre el 1 de noviembre de 2026. ¡Preparate para inscribirte!",
+    },
+    cerrada: {
+      title: "Inscripción finalizada",
+      text: "La inscripción al registro finalizó el 30 de noviembre de 2026 a las 23:59 hs. Ya no se permiten nuevos registros.",
+    },
+  }
+  const modal = modalContent[estado] || modalContent.antes
 
   return (
     <div className={styles.page_wrapper}>
-      {showDeadlineModal && (
+      {showDeadlineModal && !inscripcionAbierta && (
         <div className={styles.modal_overlay}>
           <div className={styles.modal_content}>
-            <h3 className={styles.modal_title}>
-              {inscripcionCerrada ? "Inscripción finalizada" : "Recordatorio de inscripción"}
-            </h3>
-            <p className={styles.modal_text}>
-              {inscripcionCerrada
-                ? "La inscripción al registro finalizó el 28 de febrero de 2026 a las 23:59 hs. Ya no se permiten nuevos registros."
-                : "Recordá que tenés hasta el 28 de febrero para inscribirte en el registro."}
-            </p>
+            <h3 className={styles.modal_title}>{modal.title}</h3>
+            <p className={styles.modal_text}>{modal.text}</p>
             <button
               type="button"
               className={styles.modal_button}
@@ -37,9 +44,9 @@ function Home() {
         <div className={styles.hero_section}>
           <div className={styles.h2_home}>
 
-            <h2>Registro de demanda socio habitacional</h2>
+            <h2>Registro de demanda socio habitacional </h2>
 
-            <p className={styles.hero_subtitle}>Construyendo el futuro de nuestra comunidad</p>
+            <p className={styles.hero_subtitle}>Construyendo el futuro de nuestra comunidad <br /> 2 Edicion - Barker 2026</p>
           </div>
         </div>
 
@@ -80,11 +87,11 @@ function Home() {
               </p>
             </div>
 
-           
+
           </div>
 
           <div className={styles.imagen_container}>
-            <img src="/lotes.jpeg" alt="imagen lotes" className={styles.responsive_image} />
+            <img src="/lotes-barker.png" alt="imagen lotes" className={styles.responsive_image} />
              <div className={styles.feature_cards}>
               <div className={styles.feature_card}>
                 <Users className={styles.feature_icon} />
@@ -115,23 +122,31 @@ function Home() {
             <ul className={styles.requisitos_list}>
               <li>
                 <span className={styles.check_icon}>✓</span>
-                Número de documento y CUIL/CUIT del solicitante y grupo familiar
+                Número de documento y CUIL/CUIT del solicitante y grupo familiar.
               </li>
               <li>
                 <span className={styles.check_icon}>✓</span>
-                CUIT empleador
+                CUIT empleador.
               </li>
               <li>
                 <span className={styles.check_icon}>✓</span>
-                Poseer una cuenta de correo electrónico
+                Poseer una cuenta de correo electrónico.
               </li>
               <li>
                 <span className={styles.check_icon}>✓</span>
-                No poseer vivienda propia
+                No poseer vivienda propia.
               </li>
               <li>
                 <span className={styles.check_icon}>✓</span>
-                Mayor de 18 años
+                Mayor de 18 años.
+              </li>
+              <li>
+                <span className={styles.check_icon}>✓</span>
+                Tener un ingreso familiar mensual entre 3 y 10 veces el Salario Mínimo, Vital y Móvil (SMVM) vigente.
+              </li>
+              <li>
+                <span className={styles.check_icon}>✓</span>
+                Minimo 5 años de residencia en el partido de Benito Juárez.
               </li>
             </ul>
           </div>
@@ -193,13 +208,22 @@ function Home() {
               <span>Inscripción cerrada</span>
               <Info className={styles.button_icon} />
             </button>
-          ) : (
+          ) : inscripcionAbierta ? (
             <Link to={"/registro"} className={styles.button_link}>
               <div className={styles.modern_button_primary}>
                 <span>Ingreso al Registro Lotes</span>
                 <ArrowRight className={styles.button_icon} />
               </div>
             </Link>
+          ) : (
+            <button
+              type="button"
+              className={`${styles.modern_button_primary} ${styles.button_disabled}`}
+              disabled
+            >
+              <span>Próximamente</span>
+              <Info className={styles.button_icon} />
+            </button>
           )}
         </div>
       </div>

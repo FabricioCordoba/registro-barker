@@ -119,7 +119,7 @@ function Footer() {
 
             <div className={styles.top_footer}>
 
-                <p>Municipio de Benito Juárez © 2025 - Todos los derechos reservados | EFA.CODE</p>
+                <p>Municipio de Benito Juárez © 2026 - Todos los derechos reservados | EFA.CODE</p>
 
             </div>
 

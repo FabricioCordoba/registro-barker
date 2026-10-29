@@ -71,7 +71,7 @@ export const useTokenMonitor = (logout, navigate) => {
           });
         }
       } catch (error) {
-        console.error('Error al verificar token:', error);
+       // console.error('Error al verificar token:', error);
         if (!warningShownRef.current) {
           warningShownRef.current = true;
           Swal.fire({

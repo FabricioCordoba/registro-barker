@@ -64,7 +64,7 @@ export class IngresoService {
   
     } catch (error) {
       // Logueo de errores para depuración
-      console.error("❌ Error al crear ingresos:", error);
+     // console.error("❌ Error al crear ingresos:", error);
       // Lanzar un error de servidor interno con el mensaje adecuado
       throw new InternalServerErrorException('Error al crear ingresos: ' + error.message);
     }
@@ -113,7 +113,7 @@ export class IngresoService {
     try {
       return await ingresoRepo.save(ingreso);
     } catch (error) {
-      console.error("❌ Error al actualizar ingreso:", error);
+     // console.error("❌ Error al actualizar ingreso:", error);
       throw new InternalServerErrorException("Error al actualizar ingreso: " + error.message);
     }
   }

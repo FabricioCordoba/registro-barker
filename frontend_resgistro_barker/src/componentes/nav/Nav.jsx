@@ -23,7 +23,7 @@ function Nav() {
                 </div>
 
                 <div className={styles.container_h2_nav}>
-                    <h2>Programa Mi Hábitat, mi Hogar</h2>
+                    <h2>Programa Mi Hábitat, mi Hogar - Barker</h2>
 
                 </div>
 

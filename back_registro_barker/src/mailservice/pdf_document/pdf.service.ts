@@ -1,4 +1,3 @@
-// pdf.service.ts
 import { Injectable } from '@nestjs/common';
 import * as PDFDocument from 'pdfkit';
 import * as fs from 'fs';
@@ -7,137 +6,154 @@ import { ViviendaService } from 'src/vivienda/vivienda.service';
 import { LoteService } from 'src/lote/lote.service';
 import { IngresoService } from 'src/ingreso/ingreso.service';
 
-
 @Injectable()
 export class PdfService {
-    private readonly leftMargin = 50;
-    private readonly lineHeight = 20;
-    private readonly fieldLabelWidth = 160;
-    private readonly colors = {
-        primary: '#2c3e50',
-        secondary: '#007bff',
-        accent: '#34495e',
-        text: '#4a4a4a',
-        lightBg: '#f8f9fa'
-    };
+private readonly leftMargin = 50;
+private readonly lineHeight = 20;
+private readonly fieldLabelWidth = 160;
+private readonly colors = {
+primary: '#2C3E50',
+secondary: '#009AAE',
+accent: '#34495E',
+text: '#4A4A4A',
+lightBg: '#F8F9FA'
+};
+private formatDni(value: any): string {
+    if (value === null || value === undefined || value === '') return 'N/D';
+    const digits = value.toString().replace(/\D/g, '');
+    if (digits.length === 0) return 'N/D';
+    return digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
 
-    constructor(
-        private readonly viviendaService: ViviendaService,
-        private readonly loteService: LoteService,
-        private readonly ingresoService: IngresoService
-    ) { }
+private formatCuit(value: any): string {
+    if (value === null || value === undefined || value === '') return 'N/D';
+    const digits = value.toString().replace(/\D/g, '');
+    if (digits.length !== 11) return this.formatDni(value);
+    return `${digits.slice(0, 2)}-${digits.slice(2, 10)}-${digits.slice(10)}`;
+}
 
-    private calcularEdad(fechaNacimiento: Date): number {
-        const hoy = new Date();
-        const fechaNac = new Date(fechaNacimiento);
-        let edad = hoy.getFullYear() - fechaNac.getFullYear();
-        const mes = hoy.getMonth() - fechaNac.getMonth();
-        if (mes < 0 || (mes === 0 && hoy.getDate() < fechaNac.getDate())) {
-            edad--;
-        }
-        return edad;
+constructor(
+    private readonly viviendaService: ViviendaService,
+    private readonly loteService: LoteService,
+    private readonly ingresoService: IngresoService
+) { }
+
+private calcularEdad(fechaNacimiento: Date): number {
+    const hoy = new Date();
+    const fechaNac = new Date(fechaNacimiento);
+    let edad = hoy.getFullYear() - fechaNac.getFullYear();
+    const mes = hoy.getMonth() - fechaNac.getMonth();
+    if (mes < 0 || (mes === 0 && hoy.getDate() < fechaNac.getDate())) {
+        edad--;
     }
+    return edad;
+}
 
-    async generateRegistrationPDF(data: any[]): Promise<string> {
-        return new Promise(async (resolve, reject) => {
-            const doc = new PDFDocument({ margin: 0 });
-            const filePath = path.join(process.cwd(), `src/temp/registro_${Date.now()}.pdf`);
-            const stream = fs.createWriteStream(filePath);
-            doc.pipe(stream);
+async generateRegistrationPDF(data: any[]): Promise<string> {
+    return new Promise(async (resolve, reject) => {
+        const doc = new PDFDocument({ margin: 0 });
+        const filePath = path.join(process.cwd(), `src/temp/registro_barker_${Date.now()}.pdf`);
+        const stream = fs.createWriteStream(filePath);
+        doc.pipe(stream);
 
-            // --- ENCABEZADO ---
-            try {
-                const imageUrl = 'https://res.cloudinary.com/dnzpobyip/image/upload/v1739280883/logo_muni_2024.png';
-                const response = await fetch(imageUrl);
-                if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
-                const imageBuffer = Buffer.from(await response.arrayBuffer());
+        // --- ENCABEZADO ---
+        try {
+            const imageUrl = 'https://res.cloudinary.com/dnzpobyip/image/upload/v1739280883/logo_muni_2024.png';
+            const response = await fetch(imageUrl);
+            if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
+            const imageBuffer = Buffer.from(await response.arrayBuffer());
 
-                // Constantes para el encabezado
+            // Constantes para el encabezado
 
-                const headerHeight = 130; // Altura total del encabezado
-                const baseYPosition = 20; // Posición Y inicial
-                const logoContainerSize = 80; // Tamaño del contenedor azul
-                const logoSize = 75; // Tamaño del logo
+            const headerHeight = 130; // Altura total del encabezado
+            const baseYPosition = 20; // Posición Y inicial
+            const logoContainerSize = 80; // Tamaño del contenedor azul
+            const logoSize = 75; // Tamaño del logo
 
-                const borderRadius = 8;
-                const titleStartX = 160; // Posición X donde empiezan los títulos
+            const borderRadius = 8;
+            const titleStartX = 160; // Posición X donde empiezan los títulos
 
-                // Crear el fondo azul del encabezado
-                doc.rect(0, 0, doc.page.width, headerHeight)
-                   .fill('#002b5a'); // Color de fondo azul
+            // Crear el fondo azul del encabezado
+            doc.rect(0, 0, doc.page.width, headerHeight)
+               .fill('#002b5a'); // Color de fondo azul
 
-                // Contenedor azul del logo
-                doc.roundedRect(
-                    this.leftMargin,
-                    baseYPosition,
-                    logoContainerSize,
-                    logoContainerSize,
-                    borderRadius
-                )
-                .fill('#002b5a');
+            // Contenedor azul del logo
+            doc.roundedRect(
+                this.leftMargin,
+                baseYPosition,
+                logoContainerSize,
+                logoContainerSize,
+                borderRadius
+            )
+            .fill('#002b5a');
 
-                // Centrar el logo en el contenedor azul
-                const logoOffset = (logoContainerSize - logoSize) / 2;
-                doc.image(imageBuffer,
-                    this.leftMargin + logoOffset,
-                    baseYPosition + logoOffset,
-                    {
-                        width: logoSize
-                    }
-                );
+            // Centrar el logo en el contenedor azul
+            const logoOffset = (logoContainerSize - logoSize) / 2;
+            doc.image(imageBuffer,
+                this.leftMargin + logoOffset,
+                baseYPosition + logoOffset,
+                {
+                    width: logoSize
+                }
+            );
 
-                // Calcular posiciones Y para los títulos
-                const titleY = baseYPosition + 15; // Posición Y para el título
-                const subtitleY = titleY + 25; // Posición Y para el subtítulo
+            // Calcular posiciones Y para los títulos
+            const titleY = baseYPosition + 15; // Posición Y para el título
+            const subtitleY = titleY + 25; // Posición Y para el subtítulo
 
-                // Título principal
-                doc.font('Helvetica-Bold')
-                   .fontSize(20)
-                   .fillColor('#ffffff') // Color del texto en blanco
-                   .text('Comprobante de Registro', titleStartX, titleY);
+            // Título principal
+            doc.font('Helvetica-Bold')
+               .fontSize(20)
+               .fillColor('#ffffff') // Color del texto en blanco
+               .text('Comprobante de Registro', titleStartX, titleY);
 
-                // Subtítulo
-                doc.font('Helvetica')
-                   .fontSize(14)
-                   .fillColor('#ffffff') // Color del texto en blanco
-                   .text('Programa "Mi hábitat, mi hogar"', titleStartX, subtitleY);
+            // Subtítulo
+            doc.font('Helvetica')
+               .fontSize(14)
+               .fillColor('#ffffff') // Color del texto en blanco
+               .text('Programa "Mi hábitat, mi hogar"', titleStartX, subtitleY);
 
-                // Línea divisoria
-                doc.moveTo(this.leftMargin, headerHeight)
-                   .lineTo(doc.page.width - this.leftMargin, headerHeight)
-                   .lineWidth(2)
-                   .strokeColor(this.colors.secondary)
-                   .stroke();
+            // Edición (detalle distintivo de la 2ª edición)
+            doc.font('Helvetica-Bold')
+               .fontSize(11)
+               .fillColor('#009AAE')
+               .text('Registro Barker · 2ª Edición · 2026', titleStartX, subtitleY + 20);
 
-            } catch (error) {
-                console.error('Error al cargar el logo:', error);
-            }
-            // Posición inicial para el contenido siguiente
-            const headerHeight = 150; // Definir altura del encabezado
-            let yPosition = headerHeight + 20;
+            // Línea divisoria
+            doc.moveTo(this.leftMargin, headerHeight)
+               .lineTo(doc.page.width - this.leftMargin, headerHeight)
+               .lineWidth(2)
+               .strokeColor(this.colors.secondary)
+               .stroke();
 
-            // --- CUERPO PRINCIPAL ---
-            for (const personaData of data) {
-                const {
-                    nombre,
-                    apellido,
-                    dni,
-                    CUIL_CUIT,
-                    fecha_nacimiento,
-                    vinculo,
-                    numero_registro,
-                    idVivienda,
-                    idLote,
-                    idPersona,
-                    estado_civil,
-                    genero,
-                    email,
-                    telefono,
-                    nacionalidad,
-                    certificado_discapacidad
-                } = personaData;
+        } catch (error) {
+           // console.error('Error al cargar el logo:', error);
+        }
+        // Posición inicial para el contenido siguiente
+        const headerHeight = 150; // Definir altura del encabezado
+        let yPosition = headerHeight + 20;
 
-                const vivienda = await this.viviendaService.getViviendaById(idVivienda);
+        // --- CUERPO PRINCIPAL ---
+        for (const personaData of data) {
+            const {
+                nombre,
+                apellido,
+                dni,
+                CUIL_CUIT,
+                fecha_nacimiento,
+                vinculo,
+                numero_registro,
+                idVivienda,
+                idLote,
+                idPersona,
+                estado_civil,
+                genero,
+                email,
+                telefono,
+                nacionalidad,
+                certificado_discapacidad
+            } = personaData;
+                            const vivienda = await this.viviendaService.getViviendaById(idVivienda);
                 const lote = idLote ? await this.loteService.getLoteById(idLote) : null;
                 const ingresos = await this.ingresoService.getIngresosByPersonaId(idPersona);
                 const edad = this.calcularEdad(new Date(fecha_nacimiento));
@@ -190,8 +206,8 @@ export class PdfService {
 
                 // Campos alineados
                 yPosition = this.addFieldAligned(doc, 'Nombre completo:', `${nombre} ${apellido}`, yPosition);
-                yPosition = this.addFieldAligned(doc, 'Documento:', dni, yPosition);
-                yPosition = this.addFieldAligned(doc, 'CUIL/CUIT:', CUIL_CUIT, yPosition);
+                yPosition = this.addFieldAligned(doc, 'Documento:', this.formatDni(dni), yPosition);
+                yPosition = this.addFieldAligned(doc, 'CUIL/CUIT:', this.formatCuit(CUIL_CUIT), yPosition);
                 yPosition = this.addFieldAligned(doc, 'Fecha nacimiento:', new Date(fecha_nacimiento + 'T00:00:00').toLocaleDateString('es-AR'), yPosition);
                 yPosition = this.addFieldAligned(doc, 'Edad:', `${edad} años`, yPosition);
                 yPosition = this.addFieldAligned(doc, 'Género:', genero, yPosition);
@@ -249,7 +265,7 @@ export class PdfService {
                     if (ingresos.length > 0) {
                         ingresos.forEach((ingreso, index) => {
                             yPosition = this.addFieldAligned(doc, `Ocupación ${index + 1}:`, ingreso.ocupacion, yPosition);
-                            yPosition = this.addFieldAligned(doc, 'CUIT:', ingreso.CUIT_empleador, yPosition);
+                            yPosition = this.addFieldAligned(doc, 'CUIT:', this.formatCuit(ingreso.CUIT_empleador), yPosition);
                             yPosition = this.addFieldAligned(doc, 'Salario:', `$${ingreso.salario?.toLocaleString('es-AR')}`, yPosition);
                             yPosition += 10;
                         });

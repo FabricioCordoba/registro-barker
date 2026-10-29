@@ -52,10 +52,10 @@ export class MailserviceService /* implements OnModuleInit */ {
 
             //await this.sendTestEmail(); // enviar correo de prueba
         } catch (err) {
-            console.error('❌ Error al verificar la conexión SMTP:', err);
+           // console.error('❌ Error al verificar la conexión SMTP:', err);
         }
     }
- 
+
     async sendRegisterEmail(to: string, nombreTitular: string, numero_registro: number, data: any[]) {
         try {
             const templatePath = path.join(process.cwd(), 'src/mailservice/template/confirmacionRegistro.hbs');
@@ -67,11 +67,11 @@ export class MailserviceService /* implements OnModuleInit */ {
             const mailOptions = {
                 from: '"No Responder" <no-responder@registro.benitojuarez.gov.ar>',
                 to,
-                subject: `🏠 Registro al Programa 'Mi Hábitat, Mi Hogar'`,
+                subject: `🏠 Registro Barker · 2ª Edición — Programa 'Mi Hábitat, Mi Hogar'`,
                 html: template({ nombreTitular, numero_registro }),
                 attachments: [
                     {
-                        filename: 'registro.pdf',
+                        filename: 'registro_barker_2da_edicion.pdf',
                         path: pdfPath,
                     },
                 ],

@@ -64,7 +64,7 @@ export const RegistroProvider = ({ children }) => {
       setRegistro(data);
     } catch (err) {
       setError(err.message);
-      console.error("Error:", err.message);
+      //console.error("Error:", err.message);
       if (err.message?.includes('401')) {
         if (typeof logout === 'function') logout();
         window.location.replace('/login');

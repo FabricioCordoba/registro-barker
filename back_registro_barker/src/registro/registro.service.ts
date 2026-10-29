@@ -35,20 +35,61 @@ export class RegistroService {
     private readonly registroRepository: Repository<Registro>
   ) { }
 
-  // Controla si la inscripción sigue abierta según una fecha de corte.
-  // Por defecto, la fecha de corte es el 28/02/2026 a las 23:59 (hora local del servidor),
-  // pero puede sobrescribirse con la variable de entorno REGISTRO_FECHA_CORTE
-  // usando un valor parseable por Date (por ejemplo: 2026-02-28T23:59:00).
-  private isRegistroAbierto(): boolean {
-    const ahora = new Date();
+  
+ // Parsea fechas en formato ISO (2026-11-01T00:00:00) o argentino DD/MM/YYYY[ HH:mm],
+  // evitando la ambigüedad de new Date("1/11/2026") que se interpreta como mes/día.
+  private parseFecha(value?: string): Date | null {
+    if (!value) return null;
 
-    const fechaCorteEnv = process.env.REGISTRO_FECHA_CORTE;
-    const fechaCorte = fechaCorteEnv
-      ? new Date(fechaCorteEnv)
-      : new Date(2027, 11, 28, 23, 59, 0); // 28 de febrero de 2027 23:59
+    const raw = value.trim();
+    const match = raw.match(
+      /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/
+    );
 
-    return ahora.getTime() <= fechaCorte.getTime();
+    if (match) {
+      const [, dia, mes, anio, hora = '0', minuto = '0', segundo = '0'] = match;
+      return new Date(
+        Number(anio),
+        Number(mes) - 1,
+        Number(dia),
+        Number(hora),
+        Number(minuto),
+        Number(segundo)
+      );
+    }
+
+    const date = new Date(raw);
+    return isNaN(date.getTime()) ? null : date;
   }
+
+  // Fecha "actual" simulada (solo para pruebas). Si REGISTRO_FECHA_ACTUAL está
+  // definida, se usa en lugar de la fecha real del servidor.
+  private getAhora(): Date {
+    return this.parseFecha(process.env.REGISTRO_FECHA_ACTUAL) ?? new Date();
+  }
+
+  // Controla si la inscripción está abierta según una ventana de fechas.
+  // Por defecto: desde el 01/11/2026 a las 00:00 hasta el 01/12/2026 a las 00:00
+  // (es decir, el 30/11/2026 queda incluido). Ambas fechas pueden sobrescribirse
+  // con las variables de entorno REGISTRO_FECHA_INICIO y REGISTRO_FECHA_CORTE
+  // (o REGISTRO_FECHA_FIN) usando valores ISO o DD/MM/YYYY[ HH:mm].
+  private getFechaInicioInscripcion(): Date {
+    return this.parseFecha(process.env.REGISTRO_FECHA_INICIO) ?? new Date(2026, 10, 1, 0, 0, 0); // 01/11/2026 00:00
+  }
+
+  private getFechaCierreInscripcion(): Date {
+    const valor = process.env.REGISTRO_FECHA_CORTE || process.env.REGISTRO_FECHA_FIN;
+    return this.parseFecha(valor) ?? new Date(2026, 11, 1, 0, 0, 0); // 01/12/2026 00:00 (30/11 incluido)
+  }
+
+  private isRegistroAbierto(): boolean {
+    const ahora = this.getAhora().getTime();
+    return (
+      ahora >= this.getFechaInicioInscripcion().getTime() &&
+      ahora < this.getFechaCierreInscripcion().getTime()
+    );
+  }
+
 
   // Función para calcular la edad a partir de la fecha de nacimiento
   private calcularEdad(fechaNacimiento: Date): number {
@@ -68,10 +109,13 @@ export class RegistroService {
     ingresos?: CreateIngresoDto[],
     lote?: CreateLoteDto
   }[]): Promise<Persona[]> {
-    console.log("🔹 Iniciando createRegistro. Cantidad de personas recibidas:", personas.length);
+    //console.log("🔹 Iniciando createRegistro. Cantidad de personas recibidas:", personas.length);
 
     if (!this.isRegistroAbierto()) {
-      throw new Error('Las inscripciones han finalizado el 28/02/2026 a las 23:59 hs. Ya no se permiten nuevos registros.');
+      if (this.getAhora().getTime() < this.getFechaInicioInscripcion().getTime()) {
+        throw new Error('Las inscripciones inician el 01/11/2026 a las 00:00 hs. Todavía no se permiten nuevos registros.');
+      }
+      throw new Error('Las inscripciones finalizaron el 30/11/2026 a las 23:59 hs. Ya no se permiten nuevos registros.');
     }
 
     const createdPersonas: Persona[] = [];
@@ -652,7 +696,7 @@ export class RegistroService {
       };
 
     } catch (error) {
-      console.error("❌ Error en findAll:", error);
+      //console.error("❌ Error en findAll:", error);
       throw new HttpException({
         status: HttpStatus.INTERNAL_SERVER_ERROR,
         error: 'Error al obtener los registros',

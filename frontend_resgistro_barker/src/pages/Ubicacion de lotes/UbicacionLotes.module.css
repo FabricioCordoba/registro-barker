@@ -14,6 +14,22 @@ html, body {
     padding: 20px;
 }
 
+.imagen_container {
+    border-radius: var(--border-radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-lg);
+}
+
+.responsive_image {
+    width: 100%;
+    height: 209px;
+    display: block;
+    transition: transform 0.3s;
+}
+
+.imagen_container:hover .responsive_image {
+    transform: scale(1.02);
+}
 .header_Ulotes {
     display: flex;
     justify-content: center;
