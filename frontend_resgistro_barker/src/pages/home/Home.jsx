@@ -142,7 +142,7 @@ function Home() {
               </li>
               <li>
                 <span className={styles.check_icon}>✓</span>
-                Tener un ingereso familiar mensual entre 3 y 10 veces el Salario Mínimo, Vital y Móvil (SMVM) vigente.
+                Tener un ingreso familiar mensual entre 3 y 10 veces el Salario Mínimo, Vital y Móvil (SMVM) vigente.
               </li>
               <li>
                 <span className={styles.check_icon}>✓</span>

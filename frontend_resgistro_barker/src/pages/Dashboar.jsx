@@ -14,6 +14,7 @@ import { useTokenMonitor } from "../hooks/useTokenMonitor";
 import dayjs from "dayjs";
 import { getRegistroDeudorBcra } from "../services/registroService";
 import { clasificacionesDeudor } from "../services/clasificacionDeudor";
+import { ordenarDatosPorRegistroFamiliar } from "../services/ordenarDatosExcel";
 
 const Dashboard = () => {
   const { registros = [], loading, error, getRegistros } =
@@ -107,6 +108,42 @@ const Dashboard = () => {
     setPaginaActual(1);
   };
 
+  const obtenerNumeroRegistroFamilia = (personas = []) => {
+    const titular = personas.find(
+      (persona) => persona.titular_cotitular === "Titular"
+    );
+    const candidatos = titular
+      ? [titular, ...personas.filter((persona) => persona !== titular)]
+      : personas;
+
+    return candidatos
+      .map((persona) => persona.numero_registro)
+      .find(
+        (numero) =>
+          numero !== null &&
+          numero !== undefined &&
+          !(typeof numero === "string" && numero.trim() === "") &&
+          Number.isFinite(Number(numero))
+      );
+  };
+
+  const prepararPersonasParaExportar = (
+    registro,
+    personas = registro.personas || []
+  ) => {
+    const numeroRegistro =
+      registro.numeroRegistro ??
+      obtenerNumeroRegistroFamilia(registro.personas || []);
+
+    return personas.map((persona) => ({
+      persona,
+      vivienda: persona.vivienda,
+      lote: persona.lote,
+      registroId: registro.idRegistro ?? persona.idRegistro,
+      numeroRegistro,
+    }));
+  };
+
   // Convierte importes numéricos o cadenas con formato argentino a número.
   const aNumero = (valor) => {
     if (typeof valor === "number") {
@@ -163,32 +200,56 @@ const Dashboard = () => {
       });
 
       return personasFiltradas.length > 0
-        ? { ...registro, personas: personasFiltradas }
+        ? {
+            ...registro,
+            personas: personasFiltradas,
+            numeroRegistro: obtenerNumeroRegistroFamilia(personas),
+          }
         : null;
     })
     .filter(Boolean);
 
   // Obtener el número de registro para ordenar.
   const getNumeroRegistro = (registro) => {
-    if (!registro.personas || registro.personas.length === 0) {
-      return 0;
+    const raw =
+      registro.numeroRegistro ??
+      registro.personas?.find(
+        (persona) =>
+          persona.numero_registro !== null &&
+          persona.numero_registro !== undefined &&
+          !(typeof persona.numero_registro === "string" &&
+            persona.numero_registro.trim() === "")
+      )?.numero_registro;
+
+    if (
+      raw === null ||
+      raw === undefined ||
+      (typeof raw === "string" && raw.trim() === "")
+    ) {
+      return null;
     }
 
-    const personaConNumero =
-      registro.personas.find((persona) => persona.numero_registro) ||
-      registro.personas[0];
-
-    const raw = String(
-      personaConNumero?.numero_registro || "0"
-    ).trim();
-
-    return Number(raw) || 0;
+    const numero = Number(raw);
+    return Number.isFinite(numero) ? numero : null;
   };
 
   // Ordenar los registros antes de paginar.
-  const registrosOrdenados = [...registrosFiltrados].sort(
-    (a, b) => getNumeroRegistro(a) - getNumeroRegistro(b)
-  );
+  const registrosOrdenados = registrosFiltrados
+    .map((registro, indice) => ({
+      registro,
+      indice,
+      numeroRegistro: getNumeroRegistro(registro),
+    }))
+    .sort((a, b) => {
+      if (a.numeroRegistro === null && b.numeroRegistro !== null) return 1;
+      if (a.numeroRegistro !== null && b.numeroRegistro === null) return -1;
+      if (a.numeroRegistro !== b.numeroRegistro) {
+        return a.numeroRegistro - b.numeroRegistro;
+      }
+
+      return a.indice - b.indice;
+    })
+    .map(({ registro }) => registro);
 
   // Paginación.
   const indexLast = paginaActual * registrosPorPagina;
@@ -206,12 +267,7 @@ const Dashboard = () => {
 
   // Personas filtradas, preparadas para exportar.
   const personasExtendidas = registrosFiltrados.flatMap((registro) =>
-    (registro.personas || []).map((persona) => ({
-      persona,
-      vivienda: persona.vivienda,
-      lote: persona.lote,
-      registroId: registro.idRegistro,
-    }))
+    prepararPersonasParaExportar(registro)
   );
 
   // Calcular edad.
@@ -379,13 +435,8 @@ const Dashboard = () => {
     });
 
     try {
-      // Copia y ordenamiento sin modificar los datos originales.
-      const datosOrdenados = [...datos].sort((a, b) => {
-        const numA = Number(a.persona?.numero_registro) || 0;
-        const numB = Number(b.persona?.numero_registro) || 0;
-
-        return numA - numB;
-      });
+      // Ordenar por registro familiar y mantener a sus integrantes juntos.
+      const datosOrdenados = ordenarDatosPorRegistroFamiliar(datos);
 
       // Consultar morosidad BCRA.
       const morosidadPorPersona =
@@ -845,12 +896,7 @@ for (let fila = 1; fila <= filas.length; fila++) {
   // Exportar todas las personas sin aplicar filtros.
   const descargarTodosLosRegistros = () => {
     const todos = (registros || []).flatMap((registro) =>
-      (registro.personas || []).map((persona) => ({
-        persona,
-        vivienda: persona.vivienda,
-        lote: persona.lote,
-        registroId: registro.idRegistro,
-      }))
+      prepararPersonasParaExportar(registro)
     );
 
     descargarExcel(todos, "todas_personas");
