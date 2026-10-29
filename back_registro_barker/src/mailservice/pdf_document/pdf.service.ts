@@ -127,7 +127,7 @@ async generateRegistrationPDF(data: any[]): Promise<string> {
                .stroke();
 
         } catch (error) {
-            console.error('Error al cargar el logo:', error);
+           // console.error('Error al cargar el logo:', error);
         }
         // Posición inicial para el contenido siguiente
         const headerHeight = 150; // Definir altura del encabezado

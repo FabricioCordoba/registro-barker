@@ -364,10 +364,10 @@ const Dashboard = () => {
         const periodos = respuesta?.results?.periodos;
 
         if (!Array.isArray(periodos)) {
-          console.error(
+         /*  //console.error(
             `La respuesta del BCRA no contiene períodos para la persona ${clave}:`,
             respuesta
-          );
+          ); */
           morosidadPorPersona.set(clave, {
             estado: "Error de consulta",
             items: [],
@@ -390,10 +390,10 @@ const Dashboard = () => {
           items,
         });
       } catch (err) {
-        console.error(
+      /*   console.error(
           `Error al consultar BCRA para la persona ${clave}:`,
           err
-        );
+        ); */
 
         morosidadPorPersona.set(clave, {
           estado: "Error de consulta",
@@ -876,7 +876,7 @@ for (let fila = 1; fila <= filas.length; fila++) {
         });
       }
     } catch (err) {
-      console.error("Error al generar el Excel:", err);
+      //console.error("Error al generar el Excel:", err);
 
       Swal.close();
 
@@ -973,7 +973,7 @@ for (let fila = 1; fila <= filas.length; fila++) {
           img.src = "/Logo_Muni2024.png";
         });
       } catch (error) {
-        console.warn("No se pudo cargar el logo para el PDF:", error);
+        //console.warn("No se pudo cargar el logo para el PDF:", error);
       }
 
       const dibujarEncabezado = (numeroRegistro) => {
@@ -1306,7 +1306,7 @@ for (let fila = 1; fila <= filas.length; fila++) {
         });
       }
     } catch (error) {
-      console.error("Error al generar el PDF de registros:", error);
+      //console.error("Error al generar el PDF de registros:", error);
       Swal.close();
       Swal.fire({
         icon: "error",

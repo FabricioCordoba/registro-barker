@@ -24,7 +24,7 @@ export const fetchRegistros = async () => {
     const data = await response.json();
     return data.data;
   } catch (error) {
-    console.error("Error en fetchRegistros:", error);
+   // console.error("Error en fetchRegistros:", error);
     throw error;
   }
 };
@@ -53,7 +53,7 @@ export const updateRegistroById = async (id, formData) => {
     const responseData = await response.json();
     return responseData;  // Devuelve los datos de respuesta
   } catch (error) {
-    console.error('Error en la actualización:', error.message);
+   // console.error('Error en la actualización:', error.message);
     // Aquí puedes manejar el error y relanzarlo o pasarlo a otro lugar según lo necesites
     throw error;  // Relanza el error para que lo maneje el código que llama a esta función
   }
@@ -175,7 +175,7 @@ export async function updateRegistro(registroId, datosTransformados) {
 
     return data.data; // si todo OK, devolvemos los datos
   } catch (error) {
-    console.error("Error backend:", error); // log en consola para debug
+   // console.error("Error backend:", error); // log en consola para debug
     throw new Error(error.message || "Error desconocido");
   }
 }
@@ -202,7 +202,7 @@ export const fetchViviendaById = async (id) => {
     }
     return data; // Retorna el objeto data directamente
   } catch (error) {
-    console.error("Error al obtener el registro:", error.message);
+   // console.error("Error al obtener el registro:", error.message);
     throw new Error(error.message); // Propagar el error para que lo maneje el componente
   }
 
@@ -226,7 +226,7 @@ export const updateVivienda = async (id, data) => {
 
     return await response.json();
   } catch (error) {
-    console.error('Error en updateVivienda:', error);
+   // console.error('Error en updateVivienda:', error);
     throw error;
   }
 };
@@ -293,7 +293,7 @@ export const getRegistroDeudorBcra = async (cuilCuit) => {
     return await consulta;
   } catch (error) {
     // Un solo log para cualquier error
-    console.error('Error al obtener el registro de deudor en BCRA:', error.message);
+    // console.error('Error al obtener el registro de deudor en BCRA:', error.message);
     throw error;
   } finally {
     if (

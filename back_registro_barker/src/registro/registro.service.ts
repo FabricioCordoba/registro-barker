@@ -109,7 +109,7 @@ export class RegistroService {
     ingresos?: CreateIngresoDto[],
     lote?: CreateLoteDto
   }[]): Promise<Persona[]> {
-    console.log("🔹 Iniciando createRegistro. Cantidad de personas recibidas:", personas.length);
+    //console.log("🔹 Iniciando createRegistro. Cantidad de personas recibidas:", personas.length);
 
     if (!this.isRegistroAbierto()) {
       if (this.getAhora().getTime() < this.getFechaInicioInscripcion().getTime()) {
@@ -696,7 +696,7 @@ export class RegistroService {
       };
 
     } catch (error) {
-      console.error("❌ Error en findAll:", error);
+      //console.error("❌ Error en findAll:", error);
       throw new HttpException({
         status: HttpStatus.INTERNAL_SERVER_ERROR,
         error: 'Error al obtener los registros',

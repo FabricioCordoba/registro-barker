@@ -99,7 +99,7 @@ async updateVivienda(
 
     return await viviendaRepo.save(viviendaFound);
   } catch (error) {
-    console.error('❌ Error al actualizar la vivienda:', error);
+    //console.error('❌ Error al actualizar la vivienda:', error);
 
     if (error instanceof NotFoundException) {
       throw error;

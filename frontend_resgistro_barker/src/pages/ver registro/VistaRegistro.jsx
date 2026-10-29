@@ -66,7 +66,7 @@ const VistaRegistro = () => {
 
             return { idPersona, morosidad: morosidadInfo };
           } catch (error) {
-            console.error("Error al obtener morosidad", error);
+            //console.error("Error al obtener morosidad", error);
             return { idPersona, morosidad: null };
           }
         }) || [];
@@ -79,7 +79,7 @@ const VistaRegistro = () => {
 
       setMorosidadData(morosidadMap);
     } catch (error) {
-      console.error("Error al cargar los datos:", error);
+      //console.error("Error al cargar los datos:", error);
 
       // Verificar si es un error de sesión expirada (401)
       if (error.message?.includes('401') || error.status === 401 || error.response?.status === 401) {
@@ -134,7 +134,7 @@ const VistaRegistro = () => {
       setEditMode(false);
       cargarDatos();
     } catch (err) {
-      console.error("Error al actualizar registro:", err);
+      //console.error("Error al actualizar registro:", err);
 
       // Verificar si es un error de sesión expirada (401)
       if (err.message?.includes('401') || err.status === 401 || err.response?.status === 401) {
@@ -237,7 +237,7 @@ const VistaRegistro = () => {
       doc.roundedRect(containerX, containerY, containerW, containerH, 2, 2, "F");
       doc.addImage(logo.dataUrl, "PNG", drawX, drawY, drawW, drawH);
     } catch (error) {
-      console.warn("No se pudo cargar el logo para el PDF:", error);
+      //console.warn("No se pudo cargar el logo para el PDF:", error);
     }
     doc.setTextColor(255, 255, 255);
     doc.setFont("helvetica", "bold");

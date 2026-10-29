@@ -52,7 +52,7 @@ export class MailserviceService /* implements OnModuleInit */ {
 
             //await this.sendTestEmail(); // enviar correo de prueba
         } catch (err) {
-            console.error('❌ Error al verificar la conexión SMTP:', err);
+           // console.error('❌ Error al verificar la conexión SMTP:', err);
         }
     }
 

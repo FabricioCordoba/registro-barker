@@ -571,7 +571,7 @@ const Formulario = ({ onSubmit }) => {
       });
 
       const responseData = await response.json();
-      console.log("📥 Respuesta del backend:", responseData);
+     // console.log("📥 Respuesta del backend:", responseData);
 
       if (!response.ok) {
         let errorMessage = responseData.message || "Error desconocido";
@@ -618,7 +618,7 @@ const Formulario = ({ onSubmit }) => {
 
     } catch (error) {
 
-      console.error('Error en el frontend:', error);
+      //console.error('Error en el frontend:', error);
 
       Swal.fire({
         icon: 'error',

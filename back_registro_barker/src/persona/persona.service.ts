@@ -194,7 +194,7 @@ export class PersonaService {
     // Buscar la persona
     const persona = await personaRepo.findOne({ where: { idPersona: id } });
     if (!persona) {
-      console.log('Excepción: Persona no encontrada', { id });
+      //console.log('Excepción: Persona no encontrada', { id });
       throw new Error('Persona no encontrada');
     }
 
@@ -205,10 +205,10 @@ export class PersonaService {
       });
 
       if (existing) {
-        console.log('Excepción: DNI ya registrado', {
+      /*   console.log('Excepción: DNI ya registrado', {
           dni: updatePersonaDto.dni,
           personaExistente: existing,
-        });
+        }); */
         throw new HttpException(
           {
             status: HttpStatus.BAD_REQUEST,
@@ -222,7 +222,7 @@ export class PersonaService {
 
     // Validar que haya datos a actualizar
     if (Object.keys(updatePersonaDto).length === 0) {
-      console.log('Excepción: No hay valores para actualizar', { updatePersonaDto });
+      //console.log('Excepción: No hay valores para actualizar', { updatePersonaDto });
       throw new Error('No hay valores para actualizar');
     }
 
@@ -246,7 +246,7 @@ export class PersonaService {
         } else {
           // Crear ingreso nuevo
           if (!idRegistro) {
-            console.log('Excepción: idRegistro requerido para crear ingreso', { ingresoDto });
+            //console.log('Excepción: idRegistro requerido para crear ingreso', { ingresoDto });
             throw new Error('idRegistro requerido para crear ingreso');
           }
           await this.IngresoService.createIngreso(

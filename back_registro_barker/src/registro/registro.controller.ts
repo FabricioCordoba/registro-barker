@@ -45,7 +45,7 @@ export class RegistroController {
       throw new BadRequestException('recaptcha token missing');
     }
 
-    console.log('Validando reCAPTCHA con token:', recaptchaToken);
+    //console.log('Validando reCAPTCHA con token:', recaptchaToken);
 
     await this.recaptchaService.validateToken(recaptchaToken);
     try {
